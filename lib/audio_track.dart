@@ -8,16 +8,27 @@ final Map<String, AudioBuffer> resources = {};
 
 class AudioTrack extends Track {
   final AudioBufferSourceNode sourceNode;
+  final BiquadFilterNode filterNode;
+
+  num get filter => filterNode.frequency!.value!;
+  set filter(num filter) => filterNode.frequency!.value = filter;
 
   AudioTrack(Ambience ambience, String url)
       : sourceNode = AudioBufferSourceNode(ambience.ctx),
+        filterNode = BiquadFilterNode(ambience.ctx),
         super(ambience) {
-    sourceNode.connectNode(trackGain);
+    sourceNode.connectNode(filterNode);
+    filterNode
+      ..connectNode(trackGain)
+      ..type = 'lowpass'
+      ..frequency!.value = 800;
 
     // Load URL as audio buffer
     getBuffer(url).then((buffer) {
-      sourceNode.buffer = buffer;
-      sourceNode.start();
+      sourceNode
+        ..buffer = buffer
+        ..loop = true
+        ..start();
     });
   }
 
@@ -27,16 +38,11 @@ class AudioTrack extends Track {
     var req = await HttpRequest.request(url, responseType: 'blob');
     var response = req.response;
 
-    if (response is! Blob) {
-      throw 'Requested URL is of type ${response.runtimeType} instead of Blob!';
-    }
-
     var reader = FileReader();
     reader.readAsArrayBuffer(response);
     var loadEndEvent = await reader.onLoadEnd.first;
 
     print('Loaded ${loadEndEvent.total} bytes');
-    print(reader.result.runtimeType);
 
     var bytes = (reader.result as Uint8List);
 

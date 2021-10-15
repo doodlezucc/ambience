@@ -7,6 +7,7 @@ Ambience? ambience;
 AudioTrack? track;
 
 final volumeInput = querySelector('#volume') as InputElement;
+final filterInput = querySelector('#filter') as InputElement;
 
 void main() {
   querySelector('button')
@@ -25,14 +26,19 @@ void main() {
   volumeInput.onInput.listen((_) {
     ambience!.volume = volumeInput.valueAsNumber!;
   });
+  filterInput.onInput.listen((_) {
+    track!.filter = filterInput.valueAsNumber!;
+  });
 }
 
 void setupAmbience() {
   ambience = Ambience()..volume = volumeInput.valueAsNumber!;
   track = AudioTrack(
     ambience!,
-    'http://localhost:7070/resources/trois-gymnopedies.mp3',
-  )..fadeIn();
+    'http://localhost:7070/resources/rain.mp3',
+  )
+    ..filter = filterInput.valueAsNumber!
+    ..fadeIn(transition: 2);
 }
 
 void changeStuff() {
