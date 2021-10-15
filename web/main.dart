@@ -6,6 +6,8 @@ import 'package:ambience/audio_track.dart';
 Ambience? ambience;
 AudioTrack? track;
 
+final volumeInput = querySelector('#volume') as InputElement;
+
 void main() {
   querySelector('button')
     ?..text = 'Change tha World'
@@ -19,10 +21,14 @@ void main() {
       setupAmbience();
     }
   });
+
+  volumeInput.onInput.listen((_) {
+    ambience!.volume = volumeInput.valueAsNumber!;
+  });
 }
 
 void setupAmbience() {
-  ambience = Ambience();
+  ambience = Ambience()..volume = volumeInput.valueAsNumber!;
   track = AudioTrack(
     ambience!,
     'http://localhost:7070/resources/trois-gymnopedies.mp3',

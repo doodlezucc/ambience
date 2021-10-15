@@ -7,10 +7,15 @@ class Ambience {
   late final AudioContext ctx;
   final List<Track> _tracks = [];
   late AudioNode destination;
+  late GainNode gainNode;
+
+  num get volume => gainNode.gain!.value!;
+  set volume(num volume) => gainNode.gain!.value = volume;
 
   Ambience({AudioNode? destination})
       : ctx = (destination?.context as AudioContext?) ?? AudioContext() {
     this.destination = destination ?? ctx.destination!;
+    gainNode = GainNode(ctx, {'gain': 0.5})..connectNode(this.destination);
   }
 
   Track createTrack() {
@@ -26,7 +31,7 @@ class Track {
 
   Track(this.ambience) : trackGain = GainNode(ambience.ctx, {'gain': 0}) {
     ambience._tracks.add(this);
-    trackGain.connectNode(ambience.destination);
+    trackGain.connectNode(ambience.gainNode);
   }
 
   void fadeIn({num transition = defaultTransition}) {
