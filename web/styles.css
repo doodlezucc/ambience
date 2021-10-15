@@ -1,0 +1,107 @@
+@import url(https://fonts.googleapis.com/css?family=Roboto);
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  padding: 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#canvas, #canvasClone {
+  box-shadow: 0 0 10px #0005;
+  width: 100%;
+  height: 100%;
+}
+
+#canvas text {
+  cursor: default;
+  user-select: none;
+}
+#canvas[mode=text] text {
+  outline: 1px solid #0007;
+  cursor: move;
+}
+#canvas[mode=text] text:hover {
+  outline: 1px solid #000d;
+}
+
+#whiteboardPin {
+  fill: #fffa;
+  stroke: black;
+  stroke-width: 2px;
+  animation: pin-pulse 4s ease-in-out infinite;
+  opacity: 0;
+}
+#whiteboardPin.visible {
+  opacity: 1;
+}
+
+@keyframes pin-pulse {
+    0% { r: 10 }
+   50% { r: 15 }
+  100% { r: 10 }
+}
+
+svg image {
+  background-repeat: no-repeat;
+}
+
+svg text {
+  paint-order: stroke;
+  stroke-linejoin: round;
+}
+
+#whiteboardTextControls {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 6px;
+  transform: translate(-50%, calc(-100% - 24px));
+  background-color: white;
+  box-shadow: 0 0 4px #0005;
+  transition-property: opacity, transform;
+  transition-duration: 0.2s;
+}
+#whiteboardTextControls.display-below {
+  transform: translate(-50%, 12px);
+}
+#whiteboardTextControls.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
+#whiteboardTextControls span {
+  display: flex;
+  gap: inherit;
+  align-items: center;
+}
+
+#whiteboardTextControls textarea, #whiteboardTextControls input {
+  resize: none;
+  border: none;
+  outline: 1px solid #aaa;
+}
+
+#whiteboardTextControls textarea {
+  width: 400px;
+  height: 60px;
+  overflow: auto;
+  white-space: nowrap;
+}
+
+#whiteboardTextControls input {
+  padding: 4px;
+  width: 40px;
+  margin-right: auto;
+}
