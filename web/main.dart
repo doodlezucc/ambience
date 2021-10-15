@@ -25,8 +25,8 @@ void setupAmbience() {
   ambience = Ambience();
   track = AudioTrack(
     ambience!,
-    'https://www2.cs.uic.edu/~i101/SoundFiles/CantinaBand60.wav',
-  );
+    'http://localhost:7070/resources/trois-gymnopedies.mp3',
+  )..fadeIn();
 }
 
 void changeStuff() {

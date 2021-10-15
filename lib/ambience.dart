@@ -1,6 +1,7 @@
+import 'dart:math';
 import 'dart:web_audio';
 
-const defaultTransition = 5;
+const defaultTransition = 10;
 
 class Ambience {
   late final AudioContext ctx;
@@ -39,12 +40,19 @@ class Track {
     if (_active) {
       _active = false;
       _fade(0, transition: transition);
+      trackGain.gain!.linearRampToValueAtTime(
+          0, ambience.ctx.currentTime! + transition + 0.1);
     }
   }
 
   void _fade(num gain, {num transition = defaultTransition}) {
+    trackGain.gain!.cancelScheduledValues(ambience.ctx.currentTime!);
+    trackGain.gain!.setValueAtTime(
+      min(max(trackGain.gain!.value!, 0.001), 1),
+      ambience.ctx.currentTime!,
+    );
     trackGain.gain!.exponentialRampToValueAtTime(
-      gain,
+      min(max(gain, 0.001), 1),
       ambience.ctx.currentTime! + transition,
     );
   }

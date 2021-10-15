@@ -15,13 +15,16 @@ class AudioTrack extends Track {
     sourceNode.connectNode(trackGain);
 
     // Load URL as audio buffer
-    getBuffer(url).then((buffer) => sourceNode.buffer = buffer);
+    getBuffer(url).then((buffer) {
+      sourceNode.buffer = buffer;
+      sourceNode.start();
+    });
   }
 
   Future<AudioBuffer> getBuffer(String url) async {
     if (resources[url] != null) return resources[url]!;
 
-    var req = await HttpRequest.request(url);
+    var req = await HttpRequest.request(url, responseType: 'blob');
     var response = req.response;
 
     if (response is! Blob) {
@@ -35,9 +38,9 @@ class AudioTrack extends Track {
     print('Loaded ${loadEndEvent.total} bytes');
     print(reader.result.runtimeType);
 
-    var byteBuffer = (reader.result as ByteBuffer);
+    var bytes = (reader.result as Uint8List);
 
-    var audioBuffer = await ambience.ctx.decodeAudioData(byteBuffer);
+    var audioBuffer = await ambience.ctx.decodeAudioData(bytes.buffer);
     resources[url] = audioBuffer;
     return audioBuffer;
   }
