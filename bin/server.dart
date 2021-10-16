@@ -12,12 +12,6 @@ void main(List<String> args) async {
   // Use any available host or container IP (usually `0.0.0.0`).
   final ip = InternetAddress.anyIPv4;
 
-  Response _cors(Response response) => response.change(headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST',
-        'Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token',
-      });
-
   var _fixCORS = createMiddleware(responseHandler: _cors);
 
   // Configure a pipeline that logs requests.
@@ -31,6 +25,12 @@ void main(List<String> args) async {
   final server = await serve(_handler, ip, port);
   print('Server listening on port ${server.port}');
 }
+
+Response _cors(Response response) => response.change(headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST',
+      'Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token',
+    });
 
 String getMimeType(File f) {
   switch (path.extension(f.path)) {
@@ -74,10 +74,6 @@ Future<Response> _router(Request request) async {
 Future<Response> _audioHandler(Request request) async {
   var info =
       await AudioInfo.fromUrl('https://www.youtube.com/watch?v=t8MC135MwdE');
-  var response = await httpClient.send(http.Request(
-    'GET',
-    Uri.parse(info.audioUrl),
-  ));
 
-  return Response.ok(response.stream);
+  return Response.ok(info.audioUrl);
 }

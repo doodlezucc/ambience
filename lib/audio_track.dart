@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:html';
 import 'dart:typed_data';
 import 'dart:web_audio';
@@ -6,36 +7,34 @@ import 'package:ambience/ambience.dart';
 
 final Map<String, AudioBuffer> resources = {};
 
-class AudioTrack extends Track {
-  final AudioBufferSourceNode sourceNode;
-  final BiquadFilterNode filterNode;
+mixin Filterable on Track {
+  late final BiquadFilterNode filterNode = BiquadFilterNode(ambience.ctx)
+    ..connectNode(trackGain)
+    ..type = 'lowpass'
+    ..frequency!.value = 20000;
 
   num get filter => filterNode.frequency!.value!;
   set filter(num filter) => filterNode.frequency!.value = filter;
+}
 
-  AudioTrack._(Ambience ambience, void Function(AudioTrack track) init)
+@Deprecated("Use AudioStreamTrack instead for better performance")
+class AudioBufferTrack extends Track with Filterable {
+  final AudioBufferSourceNode sourceNode;
+
+  AudioBufferTrack(Ambience ambience, String url)
       : sourceNode = AudioBufferSourceNode(ambience.ctx),
-        filterNode = BiquadFilterNode(ambience.ctx),
         super(ambience) {
     sourceNode.connectNode(filterNode);
-    filterNode
-      ..connectNode(trackGain)
-      ..type = 'lowpass'
-      ..frequency!.value = 20000;
-    init(this);
-  }
 
-  AudioTrack(Ambience ambience, String url)
-      : this._(ambience, (track) {
-          // Load URL as audio buffer
-          track.getBuffer(url).then((buffer) {
-            print(buffer.duration);
-            track.sourceNode
-              ..buffer = buffer
-              ..loop = true
-              ..start();
-          });
-        });
+    // Load URL as audio buffer
+    getBuffer(url).then((buffer) {
+      print(buffer.duration);
+      sourceNode
+        ..buffer = buffer
+        ..loop = true
+        ..start();
+    });
+  }
 
   Future<AudioBuffer> getBuffer(String url) async {
     if (resources[url] != null) return resources[url]!;
@@ -54,5 +53,57 @@ class AudioTrack extends Track {
     var audioBuffer = await ambience.ctx.decodeAudioData(bytes.buffer);
     resources[url] = audioBuffer;
     return audioBuffer;
+  }
+}
+
+class AudioStreamTrack extends Track with Filterable {
+  late final MediaElementAudioSourceNode sourceNode;
+
+  AudioStreamTrack(Ambience ambience, String url) : super(ambience) {
+    var element = AudioElement(url)
+      ..crossOrigin = 'anonymous'
+      ..loop = true;
+
+    element.onCanPlay.first.then((_) {
+      sourceNode = ambience.ctx.createMediaElementSource(element)
+        ..connectNode(filterNode);
+      element.play();
+      // fadeIn(transition: 3);
+    });
+  }
+}
+
+class CrossOriginAudioTrack extends TrackBase {
+  final AudioElement audio;
+
+  CrossOriginAudioTrack(Ambience ambience, String url)
+      : audio = AudioElement(url) {
+    this.ambience = ambience;
+    document.body!.append(audio);
+    audio
+      ..loop = true
+      ..autoplay = true
+      ..controls = true
+      ..volume = 0;
+  }
+
+  @override
+  void fadeVolume(num volume, {num transition = defaultTransition}) {
+    var start = audio.volume;
+    var i = 1;
+
+    var step = 20;
+
+    Timer.periodic(Duration(milliseconds: step), (timer) {
+      var t = (i * step / 1000) / transition;
+
+      if (t < 1) {
+        audio.volume = start + t * (ambience.volume * volume - start);
+      } else {
+        timer.cancel();
+      }
+
+      i++;
+    });
   }
 }

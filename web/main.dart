@@ -5,7 +5,7 @@ import 'package:ambience/audio_track.dart';
 import 'package:http/http.dart' as http;
 
 Ambience? ambience;
-AudioTrack? track;
+Filterable? track;
 
 final volumeInput = querySelector('#volume') as InputElement;
 final filterInput = querySelector('#filter') as InputElement;
@@ -36,19 +36,15 @@ void main() {
 
 void setupAmbience() async {
   ambience = Ambience()..volume = volumeInput.valueAsNumber!;
-  track = AudioTrack(
+  track = AudioStreamTrack(
     ambience!,
     'http://localhost:7070/resources/rain.mp3',
   )
     ..filter = filterInput.valueAsNumber!
     ..fadeIn(transition: 2);
 
-  // var response = await httpClient.get(Uri.parse('http://localhost:7070/audio'));
-
-  AudioTrack(
-    ambience!,
-    'http://localhost:7070/audio',
-  ).fadeIn(transition: 5);
+  var response = await httpClient.get(Uri.parse('http://localhost:7070/audio'));
+  CrossOriginAudioTrack(ambience!, response.body).fadeIn();
 }
 
 void changeStuff() {
