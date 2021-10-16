@@ -5,21 +5,22 @@ const defaultTransition = 10;
 
 class Ambience {
   late final AudioContext ctx;
-  final List<Track> _tracks = [];
+  final List<TrackBase> _tracks = [];
   late AudioNode destination;
-  late GainNode gainNode;
+  late final GainNode _gainNode;
 
-  num get volume => gainNode.gain!.value!;
-  set volume(num volume) => gainNode.gain!.value = volume;
+  num get volume => _gainNode.gain!.value!;
+  set volume(num volume) {
+    _gainNode.gain!.value = volume;
+    for (var t in _tracks) {
+      t.onAmbienceUpdate();
+    }
+  }
 
   Ambience({AudioNode? destination})
       : ctx = (destination?.context as AudioContext?) ?? AudioContext() {
     this.destination = destination ?? ctx.destination!;
-    gainNode = GainNode(ctx, {'gain': 0.5})..connectNode(this.destination);
-  }
-
-  Track createTrack() {
-    return Track(this);
+    _gainNode = GainNode(ctx, {'gain': 0.5})..connectNode(this.destination);
   }
 }
 
@@ -30,6 +31,12 @@ mixin AmbienceObject {
 abstract class TrackBase with AmbienceObject {
   bool _active = false;
   bool get isActive => _active;
+
+  TrackBase(Ambience ambience) {
+    this.ambience = ambience;
+    ambience._tracks.add(this);
+    onAmbienceUpdate();
+  }
 
   void fadeIn({num transition = defaultTransition}) {
     if (!_active) {
@@ -46,15 +53,17 @@ abstract class TrackBase with AmbienceObject {
   }
 
   void fadeVolume(num volume, {num transition = defaultTransition});
+
+  void onAmbienceUpdate() {}
 }
 
-class Track extends TrackBase {
+abstract class Track extends TrackBase {
   final GainNode trackGain;
 
-  Track(Ambience ambience) : trackGain = GainNode(ambience.ctx, {'gain': 0}) {
-    this.ambience = ambience;
-    ambience._tracks.add(this);
-    trackGain.connectNode(ambience.gainNode);
+  Track(Ambience ambience)
+      : trackGain = GainNode(ambience.ctx, {'gain': 0}),
+        super(ambience) {
+    trackGain.connectNode(ambience._gainNode);
   }
 
   @override

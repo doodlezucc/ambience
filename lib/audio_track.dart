@@ -75,10 +75,18 @@ class AudioStreamTrack extends Track with Filterable {
 
 class CrossOriginAudioTrack extends TrackBase {
   final AudioElement audio;
+  Timer? _volumeTimer;
+
+  double _volume = 0;
+  double get volume => _volume;
+  set volume(double volume) {
+    _volume = volume;
+    audio.volume = ambience.volume * volume;
+  }
 
   CrossOriginAudioTrack(Ambience ambience, String url)
-      : audio = AudioElement(url) {
-    this.ambience = ambience;
+      : audio = AudioElement(url),
+        super(ambience) {
     document.body!.append(audio);
     audio
       ..loop = true
@@ -89,21 +97,27 @@ class CrossOriginAudioTrack extends TrackBase {
 
   @override
   void fadeVolume(num volume, {num transition = defaultTransition}) {
-    var start = audio.volume;
+    _volumeTimer?.cancel();
+    var start = this.volume;
     var i = 1;
 
     var step = 20;
 
-    Timer.periodic(Duration(milliseconds: step), (timer) {
+    _volumeTimer = Timer.periodic(Duration(milliseconds: step), (timer) {
       var t = (i * step / 1000) / transition;
 
       if (t < 1) {
-        audio.volume = start + t * (ambience.volume * volume - start);
+        this.volume = start + t * (volume - start);
       } else {
         timer.cancel();
       }
 
       i++;
     });
+  }
+
+  @override
+  void onAmbienceUpdate() {
+    volume = volume; // Multiply volume with correct ambience master volume
   }
 }
