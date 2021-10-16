@@ -1,8 +1,12 @@
 import 'dart:io';
 
+import 'package:ambience/server/provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
+
+final httpClient = http.Client();
 
 void main(List<String> args) async {
   // Use any available host or container IP (usually `0.0.0.0`).
@@ -49,6 +53,8 @@ Future<Response> _router(Request request) async {
 
   if (path.isEmpty || path == 'home') {
     path = 'index.html';
+  } else if (path == 'audio') {
+    return _audioHandler(request);
   }
 
   var file = File((path.startsWith('resources') ? '' : 'web/') + path);
@@ -63,4 +69,15 @@ Future<Response> _router(Request request) async {
   }
 
   return Response.notFound('Request for "${request.url}"');
+}
+
+Future<Response> _audioHandler(Request request) async {
+  var info =
+      await AudioInfo.fromUrl('https://www.youtube.com/watch?v=t8MC135MwdE');
+  var response = await httpClient.send(http.Request(
+    'GET',
+    Uri.parse(info.audioUrl),
+  ));
+
+  return Response.ok(response.stream);
 }

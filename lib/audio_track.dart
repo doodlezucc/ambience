@@ -13,7 +13,7 @@ class AudioTrack extends Track {
   num get filter => filterNode.frequency!.value!;
   set filter(num filter) => filterNode.frequency!.value = filter;
 
-  AudioTrack(Ambience ambience, String url)
+  AudioTrack._(Ambience ambience, void Function(AudioTrack track) init)
       : sourceNode = AudioBufferSourceNode(ambience.ctx),
         filterNode = BiquadFilterNode(ambience.ctx),
         super(ambience) {
@@ -21,16 +21,21 @@ class AudioTrack extends Track {
     filterNode
       ..connectNode(trackGain)
       ..type = 'lowpass'
-      ..frequency!.value = 800;
-
-    // Load URL as audio buffer
-    getBuffer(url).then((buffer) {
-      sourceNode
-        ..buffer = buffer
-        ..loop = true
-        ..start();
-    });
+      ..frequency!.value = 20000;
+    init(this);
   }
+
+  AudioTrack(Ambience ambience, String url)
+      : this._(ambience, (track) {
+          // Load URL as audio buffer
+          track.getBuffer(url).then((buffer) {
+            print(buffer.duration);
+            track.sourceNode
+              ..buffer = buffer
+              ..loop = true
+              ..start();
+          });
+        });
 
   Future<AudioBuffer> getBuffer(String url) async {
     if (resources[url] != null) return resources[url]!;
