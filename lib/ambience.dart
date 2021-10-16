@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:web_audio';
 
@@ -46,8 +47,8 @@ abstract class TrackBase with AmbienceObject {
   }
 
   void fadeOut({num transition = defaultTransition}) {
-    if (!_active) {
-      _active = true;
+    if (_active) {
+      _active = false;
       fadeVolume(0, transition: transition);
     }
   }
@@ -70,17 +71,17 @@ abstract class Track extends TrackBase {
   void fadeVolume(num volume, {num transition = defaultTransition}) {
     trackGain.gain!.cancelScheduledValues(ambience.ctx.currentTime!);
     trackGain.gain!.setValueAtTime(
-      min(max(trackGain.gain!.value!, 0.001), 1),
+      min(max(trackGain.gain!.value!, 0.005), 1),
       ambience.ctx.currentTime!,
     );
-    trackGain.gain!.exponentialRampToValueAtTime(
-      min(max(volume, 0.001), 1),
-      ambience.ctx.currentTime! + transition,
-    );
 
-    if (volume == 0) {
-      trackGain.gain!.linearRampToValueAtTime(
-          0, ambience.ctx.currentTime! + transition + 0.1);
+    var clamp = min(max(volume, 0.005), 1);
+    var when = ambience.ctx.currentTime! + transition;
+
+    if (volume > trackGain.gain!.value!) {
+      trackGain.gain!.exponentialRampToValueAtTime(clamp, when);
+    } else {
+      trackGain.gain!.linearRampToValueAtTime(min(max(volume, 0), 1), when);
     }
   }
 }
