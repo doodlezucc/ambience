@@ -40,19 +40,64 @@ abstract class NodeClip extends ClipBase {
 
 class FilterableAudioClip extends NodeClip {
   late final MediaElementAudioSourceNode sourceNode;
+  late final MediaElementAudioSourceNode sourceNode2;
+  num loopTransition = 5;
+  bool _loopSwitch = false;
 
   FilterableAudioClip(FilterableAudioClipTrack track, String url)
       : super(track) {
-    var element = AudioElement(url)
-      ..crossOrigin = 'anonymous'
-      ..loop = true;
+    var a1 = _initUrl(url);
 
-    element.onCanPlay.first.then((_) {
-      sourceNode = track.ambience.ctx.createMediaElementSource(element)
-        ..connectNode(clipGain);
-      element.play();
-      // fadeIn(transition: 3);
+    AudioElement? a2;
+
+    a1.onCanPlay.first.then((_) => a1.play());
+
+    a1.onTimeUpdate.listen((_) {
+      if (!_loopSwitch && a1.currentTime >= a1.duration - loopTransition) {
+        _crossFade(a2!, a1);
+      }
     });
+
+    a1.onCanPlayThrough.first.then((ev) {
+      a2 = _initUrl(url);
+
+      a2!.onTimeUpdate.listen((_) {
+        if (!_loopSwitch && a2!.currentTime >= a2!.duration - loopTransition) {
+          _crossFade(a1, a2!);
+        }
+      });
+    });
+  }
+
+  void _crossFade(AudioElement fadeIn, AudioElement fadeOut) {
+    _loopSwitch = true;
+    fadeIn.volume = 0;
+    fadeIn.play();
+
+    var i = 1;
+    var step = 50;
+
+    Timer.periodic(Duration(milliseconds: step), (timer) {
+      var t = i * step / (1000 * loopTransition);
+
+      if (t <= 1) {
+        fadeIn.volume = pow(t, 0.65);
+        fadeOut.volume = pow(1 - t, 0.65);
+      } else {
+        fadeOut.currentTime = 0;
+        fadeOut.pause();
+        _loopSwitch = false;
+        timer.cancel();
+      }
+      i++;
+    });
+  }
+
+  AudioElement _initUrl(String url) {
+    var element = AudioElement(url)..crossOrigin = 'anonymous';
+
+    track.ambience.ctx.createMediaElementSource(element).connectNode(clipGain);
+    return element;
   }
 }
 

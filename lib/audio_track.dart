@@ -8,7 +8,7 @@ class AudioClipTrack extends TrackBase<CrossOriginAudioClip> {
   final _ctrl = StreamController<num>.broadcast();
   Stream<num> get onVolumeChange => _ctrl.stream;
 
-  num _volume = 0.2;
+  num _volume = 0.8;
 
   @override
   num get volume => _volume;
