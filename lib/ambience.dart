@@ -1,26 +1,27 @@
-import 'dart:math';
 import 'dart:web_audio';
 
 const defaultTransition = 10;
 
 class Ambience {
   late final AudioContext ctx;
-  final List<ClipBase> _clips = [];
+  final List<TrackBase> _tracks = [];
   late AudioNode destination;
-  late final GainNode _gainNode;
+  late final GainNode gainNode;
 
-  num get volume => _gainNode.gain!.value!;
+  num get volume => gainNode.gain!.value!;
   set volume(num volume) {
-    _gainNode.gain!.value = volume;
-    for (var t in _clips) {
-      t.onAmbienceUpdate();
+    gainNode.gain!.value = volume;
+    for (var t in _tracks) {
+      for (var c in t._clips) {
+        c.onAmbienceUpdate();
+      }
     }
   }
 
   Ambience({AudioNode? destination})
       : ctx = (destination?.context as AudioContext?) ?? AudioContext() {
     this.destination = destination ?? ctx.destination!;
-    _gainNode = GainNode(ctx, {'gain': 0.5})..connectNode(this.destination);
+    gainNode = GainNode(ctx, {'gain': 0.5})..connectNode(this.destination);
   }
 }
 
@@ -28,14 +29,47 @@ mixin AmbienceObject {
   late final Ambience ambience;
 }
 
-abstract class ClipBase with AmbienceObject {
+abstract class TrackBase<C extends ClipBase> with AmbienceObject {
+  late final int id;
+  final List<C> _clips = [];
+
+  int? _activeClip;
+  C? get activeClip => _activeClip == null ? null : _clips[_activeClip!];
+
+  num get volume;
+  set volume(num volume);
+
+  TrackBase(Ambience ambience) {
+    id = ambience._tracks.length;
+    ambience._tracks.add(this);
+    this.ambience = ambience;
+  }
+
+  void cueClip(int? index, {num transition = defaultTransition}) {
+    activeClip?.fadeOut(transition: transition);
+
+    if (index != null) {
+      _clips[index].fadeIn(transition: transition);
+    }
+    _activeClip = index;
+  }
+}
+
+abstract class ClipBase {
+  final TrackBase track;
+  late final int id;
+
   bool _active = false;
   bool get isActive => _active;
 
-  ClipBase(Ambience ambience) {
-    this.ambience = ambience;
-    ambience._clips.add(this);
+  ClipBase(this.track) {
+    id = track._clips.length;
+    track._clips.add(this);
     onAmbienceUpdate();
+  }
+
+  void cue({num transition = defaultTransition}) {
+    track.cueClip(id);
   }
 
   void fadeIn({num transition = defaultTransition}) {
@@ -55,32 +89,4 @@ abstract class ClipBase with AmbienceObject {
   void fadeVolume(num volume, {num transition = defaultTransition});
 
   void onAmbienceUpdate() {}
-}
-
-abstract class NodeClip extends ClipBase {
-  final GainNode clipGain;
-
-  NodeClip(Ambience ambience)
-      : clipGain = GainNode(ambience.ctx, {'gain': 0}),
-        super(ambience) {
-    clipGain.connectNode(ambience._gainNode);
-  }
-
-  @override
-  void fadeVolume(num volume, {num transition = defaultTransition}) {
-    clipGain.gain!.cancelScheduledValues(ambience.ctx.currentTime!);
-    clipGain.gain!.setValueAtTime(
-      min(max(clipGain.gain!.value!, 0.005), 1),
-      ambience.ctx.currentTime!,
-    );
-
-    var clamp = min(max(volume, 0.005), 1);
-    var when = ambience.ctx.currentTime! + transition;
-
-    if (volume > clipGain.gain!.value!) {
-      clipGain.gain!.exponentialRampToValueAtTime(clamp, when);
-    } else {
-      clipGain.gain!.linearRampToValueAtTime(min(max(volume, 0), 1), when);
-    }
-  }
 }

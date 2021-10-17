@@ -1,72 +1,56 @@
 import 'dart:async';
 import 'dart:html';
-import 'dart:typed_data';
+import 'dart:math';
 import 'dart:web_audio';
 
 import 'package:ambience/ambience.dart';
+import 'package:ambience/audio_track.dart';
 
 final Map<String, AudioBuffer> resources = {};
 
-mixin Filterable on NodeClip {
-  late final BiquadFilterNode filterNode = BiquadFilterNode(ambience.ctx)
-    ..connectNode(clipGain)
-    ..type = 'lowpass'
-    ..frequency!.value = 20000;
+abstract class NodeClip extends ClipBase {
+  final GainNode clipGain;
 
-  num get filter => filterNode.frequency!.value!;
-  set filter(num filter) => filterNode.frequency!.value = filter;
-}
-
-@Deprecated("Use FilterableAudioClip instead for better performance")
-class AudioBufferClip extends NodeClip with Filterable {
-  final AudioBufferSourceNode sourceNode;
-
-  AudioBufferClip(Ambience ambience, String url)
-      : sourceNode = AudioBufferSourceNode(ambience.ctx),
-        super(ambience) {
-    sourceNode.connectNode(filterNode);
-
-    // Load URL as audio buffer
-    getBuffer(url).then((buffer) {
-      print(buffer.duration);
-      sourceNode
-        ..buffer = buffer
-        ..loop = true
-        ..start();
-    });
+  NodeClip(FilterableAudioClipTrack track)
+      : clipGain = GainNode(track.ambience.ctx, {'gain': 0}),
+        super(track) {
+    clipGain.connectNode(track.filterNode);
   }
 
-  Future<AudioBuffer> getBuffer(String url) async {
-    if (resources[url] != null) return resources[url]!;
+  @override
+  void fadeVolume(num volume, {num transition = defaultTransition}) {
+    print('fade $volume');
+    var ctx = track.ambience.ctx;
 
-    var req = await HttpRequest.request(url, responseType: 'blob');
-    var response = req.response;
+    clipGain.gain!.cancelScheduledValues(ctx.currentTime!);
+    clipGain.gain!.setValueAtTime(
+      min(max(clipGain.gain!.value!, 0.005), 1),
+      track.ambience.ctx.currentTime!,
+    );
 
-    var reader = FileReader();
-    reader.readAsArrayBuffer(response);
-    var loadEndEvent = await reader.onLoadEnd.first;
+    var clamp = min(max(volume, 0.005), 1);
+    var when = ctx.currentTime! + transition;
 
-    print('Loaded ${loadEndEvent.total} bytes');
-
-    var bytes = (reader.result as Uint8List);
-
-    var audioBuffer = await ambience.ctx.decodeAudioData(bytes.buffer);
-    resources[url] = audioBuffer;
-    return audioBuffer;
+    if (volume > clipGain.gain!.value!) {
+      clipGain.gain!.exponentialRampToValueAtTime(clamp, when);
+    } else {
+      clipGain.gain!.linearRampToValueAtTime(min(max(volume, 0), 1), when);
+    }
   }
 }
 
-class FilterableAudioClip extends NodeClip with Filterable {
+class FilterableAudioClip extends NodeClip {
   late final MediaElementAudioSourceNode sourceNode;
 
-  FilterableAudioClip(Ambience ambience, String url) : super(ambience) {
+  FilterableAudioClip(FilterableAudioClipTrack track, String url)
+      : super(track) {
     var element = AudioElement(url)
       ..crossOrigin = 'anonymous'
       ..loop = true;
 
     element.onCanPlay.first.then((_) {
-      sourceNode = ambience.ctx.createMediaElementSource(element)
-        ..connectNode(filterNode);
+      sourceNode = track.ambience.ctx.createMediaElementSource(element)
+        ..connectNode(clipGain);
       element.play();
       // fadeIn(transition: 3);
     });
@@ -81,12 +65,12 @@ class CrossOriginAudioClip extends ClipBase {
   double get volume => _volume;
   set volume(double volume) {
     _volume = volume;
-    audio.volume = ambience.volume * volume;
+    audio.volume = track.ambience.volume * volume;
   }
 
-  CrossOriginAudioClip(Ambience ambience, String url)
+  CrossOriginAudioClip(AudioClipTrack track, String url)
       : audio = AudioElement(url),
-        super(ambience) {
+        super(track) {
     document.body!.append(audio);
     audio
       ..loop = true
