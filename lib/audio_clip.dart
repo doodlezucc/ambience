@@ -19,7 +19,6 @@ abstract class NodeClip extends ClipBase {
 
   @override
   void fadeVolume(num volume, {num transition = defaultTransition}) {
-    print('fade $volume');
     var ctx = track.ambience.ctx;
 
     clipGain.gain!.cancelScheduledValues(ctx.currentTime!);
@@ -65,7 +64,7 @@ class CrossOriginAudioClip extends ClipBase {
   double get volume => _volume;
   set volume(double volume) {
     _volume = volume;
-    audio.volume = track.ambience.volume * volume;
+    audio.volume = track.ambience.volume * track.volume * volume;
   }
 
   CrossOriginAudioClip(AudioClipTrack track, String url)
@@ -75,8 +74,13 @@ class CrossOriginAudioClip extends ClipBase {
     audio
       ..loop = true
       ..autoplay = true
-      ..controls = true
-      ..volume = 0;
+      ..controls = true;
+
+    volume = 0;
+
+    track.onVolumeChange.listen((v) {
+      volume = volume; // Multiply audio output with correct master volume
+    });
   }
 
   @override
@@ -98,10 +102,5 @@ class CrossOriginAudioClip extends ClipBase {
 
       i++;
     });
-  }
-
-  @override
-  void onAmbienceUpdate() {
-    volume = volume; // Multiply volume with correct ambience master volume
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:web_audio';
 
 const defaultTransition = 10;
@@ -8,14 +9,13 @@ class Ambience {
   late AudioNode destination;
   late final GainNode gainNode;
 
+  final _ctrl = StreamController<num>.broadcast();
+  Stream<num> get onVolumeChange => _ctrl.stream;
+
   num get volume => gainNode.gain!.value!;
   set volume(num volume) {
     gainNode.gain!.value = volume;
-    for (var t in _tracks) {
-      for (var c in t._clips) {
-        c.onAmbienceUpdate();
-      }
-    }
+    _ctrl.sink.add(volume);
   }
 
   Ambience({AudioNode? destination})
@@ -65,7 +65,6 @@ abstract class ClipBase {
   ClipBase(this.track) {
     id = track._clips.length;
     track._clips.add(this);
-    onAmbienceUpdate();
   }
 
   void cue({num transition = defaultTransition}) {
@@ -87,6 +86,4 @@ abstract class ClipBase {
   }
 
   void fadeVolume(num volume, {num transition = defaultTransition});
-
-  void onAmbienceUpdate() {}
 }

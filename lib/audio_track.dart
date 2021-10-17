@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:web_audio';
 
 import 'package:ambience/ambience.dart';
 import 'package:ambience/audio_clip.dart';
 
 class AudioClipTrack extends TrackBase<CrossOriginAudioClip> {
-  num _volume = 0;
+  final _ctrl = StreamController<num>.broadcast();
+  Stream<num> get onVolumeChange => _ctrl.stream;
+
+  num _volume = 0.2;
 
   @override
   num get volume => _volume;
@@ -12,9 +16,12 @@ class AudioClipTrack extends TrackBase<CrossOriginAudioClip> {
   @override
   set volume(num volume) {
     _volume = volume;
+    _ctrl.sink.add(volume);
   }
 
-  AudioClipTrack(Ambience ambience) : super(ambience);
+  AudioClipTrack(Ambience ambience) : super(ambience) {
+    ambience.onVolumeChange.listen((_) => volume = volume);
+  }
 }
 
 class FilterableAudioClipTrack extends TrackBase<FilterableAudioClip> {
