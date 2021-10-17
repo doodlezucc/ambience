@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 import 'dart:web_audio';
 
@@ -6,14 +5,14 @@ const defaultTransition = 10;
 
 class Ambience {
   late final AudioContext ctx;
-  final List<TrackBase> _tracks = [];
+  final List<ClipBase> _clips = [];
   late AudioNode destination;
   late final GainNode _gainNode;
 
   num get volume => _gainNode.gain!.value!;
   set volume(num volume) {
     _gainNode.gain!.value = volume;
-    for (var t in _tracks) {
+    for (var t in _clips) {
       t.onAmbienceUpdate();
     }
   }
@@ -29,13 +28,13 @@ mixin AmbienceObject {
   late final Ambience ambience;
 }
 
-abstract class TrackBase with AmbienceObject {
+abstract class ClipBase with AmbienceObject {
   bool _active = false;
   bool get isActive => _active;
 
-  TrackBase(Ambience ambience) {
+  ClipBase(Ambience ambience) {
     this.ambience = ambience;
-    ambience._tracks.add(this);
+    ambience._clips.add(this);
     onAmbienceUpdate();
   }
 
@@ -58,30 +57,30 @@ abstract class TrackBase with AmbienceObject {
   void onAmbienceUpdate() {}
 }
 
-abstract class Track extends TrackBase {
-  final GainNode trackGain;
+abstract class NodeClip extends ClipBase {
+  final GainNode clipGain;
 
-  Track(Ambience ambience)
-      : trackGain = GainNode(ambience.ctx, {'gain': 0}),
+  NodeClip(Ambience ambience)
+      : clipGain = GainNode(ambience.ctx, {'gain': 0}),
         super(ambience) {
-    trackGain.connectNode(ambience._gainNode);
+    clipGain.connectNode(ambience._gainNode);
   }
 
   @override
   void fadeVolume(num volume, {num transition = defaultTransition}) {
-    trackGain.gain!.cancelScheduledValues(ambience.ctx.currentTime!);
-    trackGain.gain!.setValueAtTime(
-      min(max(trackGain.gain!.value!, 0.005), 1),
+    clipGain.gain!.cancelScheduledValues(ambience.ctx.currentTime!);
+    clipGain.gain!.setValueAtTime(
+      min(max(clipGain.gain!.value!, 0.005), 1),
       ambience.ctx.currentTime!,
     );
 
     var clamp = min(max(volume, 0.005), 1);
     var when = ambience.ctx.currentTime! + transition;
 
-    if (volume > trackGain.gain!.value!) {
-      trackGain.gain!.exponentialRampToValueAtTime(clamp, when);
+    if (volume > clipGain.gain!.value!) {
+      clipGain.gain!.exponentialRampToValueAtTime(clamp, when);
     } else {
-      trackGain.gain!.linearRampToValueAtTime(min(max(volume, 0), 1), when);
+      clipGain.gain!.linearRampToValueAtTime(min(max(volume, 0), 1), when);
     }
   }
 }

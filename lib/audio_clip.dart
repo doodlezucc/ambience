@@ -7,9 +7,9 @@ import 'package:ambience/ambience.dart';
 
 final Map<String, AudioBuffer> resources = {};
 
-mixin Filterable on Track {
+mixin Filterable on NodeClip {
   late final BiquadFilterNode filterNode = BiquadFilterNode(ambience.ctx)
-    ..connectNode(trackGain)
+    ..connectNode(clipGain)
     ..type = 'lowpass'
     ..frequency!.value = 20000;
 
@@ -17,11 +17,11 @@ mixin Filterable on Track {
   set filter(num filter) => filterNode.frequency!.value = filter;
 }
 
-@Deprecated("Use AudioStreamTrack instead for better performance")
-class AudioBufferTrack extends Track with Filterable {
+@Deprecated("Use FilterableAudioClip instead for better performance")
+class AudioBufferClip extends NodeClip with Filterable {
   final AudioBufferSourceNode sourceNode;
 
-  AudioBufferTrack(Ambience ambience, String url)
+  AudioBufferClip(Ambience ambience, String url)
       : sourceNode = AudioBufferSourceNode(ambience.ctx),
         super(ambience) {
     sourceNode.connectNode(filterNode);
@@ -56,10 +56,10 @@ class AudioBufferTrack extends Track with Filterable {
   }
 }
 
-class AudioStreamTrack extends Track with Filterable {
+class FilterableAudioClip extends NodeClip with Filterable {
   late final MediaElementAudioSourceNode sourceNode;
 
-  AudioStreamTrack(Ambience ambience, String url) : super(ambience) {
+  FilterableAudioClip(Ambience ambience, String url) : super(ambience) {
     var element = AudioElement(url)
       ..crossOrigin = 'anonymous'
       ..loop = true;
@@ -73,7 +73,7 @@ class AudioStreamTrack extends Track with Filterable {
   }
 }
 
-class CrossOriginAudioTrack extends TrackBase {
+class CrossOriginAudioClip extends ClipBase {
   final AudioElement audio;
   Timer? _volumeTimer;
 
@@ -84,7 +84,7 @@ class CrossOriginAudioTrack extends TrackBase {
     audio.volume = ambience.volume * volume;
   }
 
-  CrossOriginAudioTrack(Ambience ambience, String url)
+  CrossOriginAudioClip(Ambience ambience, String url)
       : audio = AudioElement(url),
         super(ambience) {
     document.body!.append(audio);

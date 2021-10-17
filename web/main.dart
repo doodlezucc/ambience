@@ -1,11 +1,11 @@
 import 'dart:html';
 
 import 'package:ambience/ambience.dart';
-import 'package:ambience/audio_track.dart';
+import 'package:ambience/audio_clip.dart';
 import 'package:http/http.dart' as http;
 
 Ambience? ambience;
-Filterable? track;
+Filterable? clip;
 
 final volumeInput = querySelector('#volume') as InputElement;
 final filterInput = querySelector('#filter') as InputElement;
@@ -30,13 +30,13 @@ void main() {
     ambience!.volume = volumeInput.valueAsNumber!;
   });
   filterInput.onInput.listen((_) {
-    track!.filter = filterInput.valueAsNumber!;
+    clip!.filter = filterInput.valueAsNumber!;
   });
 }
 
 void setupAmbience() async {
   ambience = Ambience()..volume = volumeInput.valueAsNumber!;
-  track = AudioStreamTrack(
+  clip = FilterableAudioClip(
     ambience!,
     'http://localhost:7070/resources/rain.mp3',
   )
@@ -44,13 +44,13 @@ void setupAmbience() async {
     ..fadeIn(transition: 2);
 
   var response = await httpClient.get(Uri.parse('http://localhost:7070/audio'));
-  CrossOriginAudioTrack(ambience!, response.body).fadeIn();
+  CrossOriginAudioClip(ambience!, response.body).fadeIn();
 }
 
 void changeStuff() {
-  if (track!.isActive) {
-    track!.fadeOut();
+  if (clip!.isActive) {
+    clip!.fadeOut();
   } else {
-    track!.fadeIn();
+    clip!.fadeIn();
   }
 }
