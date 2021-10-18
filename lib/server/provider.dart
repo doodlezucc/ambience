@@ -1,9 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 
-class YoutubeProvider {}
+class Playlist {
+  int _index = -1;
+  final List<String> ids;
 
-class Playlist {}
+  Playlist(List<String> videoIDs, {bool shuffle = true})
+      : ids = List.from(videoIDs) {
+    if (shuffle) {
+      ids.shuffle();
+    }
+  }
+
+  String getNextVideoID() {
+    _index = (_index + 1) % ids.length;
+    return ids[_index];
+  }
+}
 
 class AudioInfo {
   final String pageUrl;
@@ -13,8 +26,8 @@ class AudioInfo {
 
   AudioInfo(this.pageUrl, this.title, this.audioUrl, this.duration);
 
-  static Future<AudioInfo> fromUrl(String url) async {
-    var process = await Process.start('youtube-dl', [
+  static Future<AudioInfo> extract(String url) async {
+    var lines = await _collectYTDLLines([
       '--get-title',
       '--get-duration',
       '-g',
@@ -23,21 +36,37 @@ class AudioInfo {
       url,
     ]);
 
-    var lines = <String>[];
-
-    process.stdout.listen((data) {
-      var s = utf8.decode(data).trimRight();
-      lines.addAll(s.split('\n'));
-    });
-    process.stderr.listen((data) {
-      stderr.add(data);
-    });
-
-    var exitCode = await process.exitCode;
-    if (exitCode == 0) {
-      return AudioInfo(url, lines[0], lines[1], lines[2]);
-    }
-
-    throw 'Error executing youtube-dl';
+    return AudioInfo(url, lines[0], lines[1], lines[2]);
   }
+}
+
+Future<List<String>> getVideosInPlaylist(String playlist) async {
+  var lines = await _collectYTDLLines([
+    '--flat-playlist',
+    '--get-id',
+    playlist,
+  ]);
+
+  return lines;
+}
+
+Future<List<String>> _collectYTDLLines(List<String> arguments) async {
+  var process = await Process.start('youtube-dl', arguments);
+
+  var lines = <String>[];
+
+  process.stdout.listen((data) {
+    var s = utf8.decode(data).trimRight();
+    lines.addAll(s.split('\n'));
+  });
+  process.stderr.listen((data) {
+    stderr.add(data);
+  });
+
+  var exitCode = await process.exitCode;
+  if (exitCode == 0) {
+    return lines;
+  }
+
+  throw 'Error executing youtube-dl';
 }

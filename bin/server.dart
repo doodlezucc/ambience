@@ -7,6 +7,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 
 final httpClient = http.Client();
+late Playlist tavernPlaylist;
 
 void main(List<String> args) async {
   // Use any available host or container IP (usually `0.0.0.0`).
@@ -24,6 +25,10 @@ void main(List<String> args) async {
   final port = int.parse(Platform.environment['PORT'] ?? '7070');
   final server = await serve(_handler, ip, port);
   print('Server listening on port ${server.port}');
+
+  tavernPlaylist =
+      Playlist(await getVideosInPlaylist('PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM'));
+  print('Initialized playlist with ${tavernPlaylist.ids.length} videos');
 }
 
 Response _cors(Response response) => response.change(headers: {
@@ -72,8 +77,7 @@ Future<Response> _router(Request request) async {
 }
 
 Future<Response> _audioHandler(Request request) async {
-  var info =
-      await AudioInfo.fromUrl('https://www.youtube.com/watch?v=t8MC135MwdE');
+  var info = await AudioInfo.extract(tavernPlaylist.getNextVideoID());
 
   return Response.ok(info.audioUrl);
 }
