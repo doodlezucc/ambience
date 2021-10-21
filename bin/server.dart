@@ -32,9 +32,8 @@ void main(List<String> args) async {
 }
 
 Response _cors(Response response) => response.change(headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST',
-      'Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token',
+      'Access-Control-Allow-Origin': 'http://localhost:8080',
+      'Access-Control-Allow-Methods': 'GET',
     });
 
 String getMimeType(File f) {
