@@ -1,13 +1,14 @@
 import 'dart:io';
+import 'dart:math';
 
-import 'package:ambience/server/provider.dart';
+import 'package:ambience/server/playlists.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 
 final httpClient = http.Client();
-late Playlist tavernPlaylist;
+final collection = PlaylistCollection(Directory('resources/music'));
 
 void main(List<String> args) async {
   // Use any available host or container IP (usually `0.0.0.0`).
@@ -26,9 +27,11 @@ void main(List<String> args) async {
   final server = await serve(_handler, ip, port);
   print('Server listening on port ${server.port}');
 
-  tavernPlaylist =
-      Playlist(await getVideosInPlaylist('PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM'));
-  print('Initialized playlist with ${tavernPlaylist.ids.length} videos');
+  await collection.load();
+  await collection.addPlaylist('PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM');
+  print('Downloaded!');
+  await collection.save();
+  print('Saved!');
 }
 
 Response _cors(Response response) => response.change(headers: {
@@ -76,7 +79,9 @@ Future<Response> _router(Request request) async {
 }
 
 Future<Response> _audioHandler(Request request) async {
-  var info = await AudioInfo.extract(tavernPlaylist.getNextVideoID());
+  var tracks = collection.playlists.first.tracks;
 
-  return Response.ok(info.audioUrl);
+  var pick = tracks[Random().nextInt(tracks.length)];
+
+  return Response.ok(pick.id);
 }

@@ -14,11 +14,15 @@ class CustomAmbience extends Ambience {
     weather = FilterableAudioClipTrack(this);
 
     httpClient.get(Uri.parse('http://localhost:7070/audio')).then((response) {
-      CrossOriginAudioClip(music, response.body).fadeIn();
+      var url =
+          'http://localhost:7070/resources/music/tracks/${response.body}.mp3';
+      CrossOriginAudioClip(music, url).fadeIn();
     });
 
-    FilterableAudioClip(weather, 'http://localhost:7070/resources/rain.mp3')
-        .cue(transition: 5);
+    FilterableAudioClip(
+      weather,
+      'http://localhost:7070/resources/weather-rain.mp3',
+    ).cue(transition: 5);
   }
 
   void changeWeather(bool rain) {
