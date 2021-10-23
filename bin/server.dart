@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:ambience/server/playlists.dart';
 import 'package:http/http.dart' as http;
@@ -79,12 +78,9 @@ Future<Response> _router(Request request) async {
 }
 
 Future<Response> _audioHandler(Request request) async {
-  var tracks = collection.playlists.first.tracks;
+  var tracks = List.from(collection.playlists.first.tracks)..shuffle();
 
-  var pick = tracks[Random().nextInt(tracks.length)];
-  print(pick);
-
-  return Response.ok(jsonEncode(pick));
+  return Response.ok(jsonEncode({'tracks': tracks}));
 }
 
 /// The playlists I use consists of videos titled "Track title - Artist".

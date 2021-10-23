@@ -44,6 +44,9 @@ class FilterableAudioClip extends NodeClip {
   num loopTransition = 5;
   bool _loopSwitch = false;
 
+  @override
+  num get duration => sourceNode.mediaElement!.duration;
+
   FilterableAudioClip(FilterableAudioClipTrack track, String url)
       : super(track) {
     var a1 = _initUrl(url);
@@ -102,25 +105,23 @@ class FilterableAudioClip extends NodeClip {
 }
 
 class CrossOriginAudioClip extends ClipBase {
-  final AudioElement audio;
+  final String _url;
+  AudioElement? audio;
   Timer? _volumeTimer;
 
   double _volume = 0;
   double get volume => _volume;
   set volume(double volume) {
     _volume = volume;
-    audio.volume = track.ambience.volume * track.volume * volume;
+    audio?.volume = track.ambience.volume * track.volume * volume;
   }
 
-  CrossOriginAudioClip(AudioClipTrack track, String url)
-      : audio = AudioElement(url),
-        super(track) {
-    document.body!.append(audio);
-    audio
-      ..loop = true
-      ..autoplay = true
-      ..controls = true;
+  @override
+  num get duration => audio!.duration;
 
+  CrossOriginAudioClip(AudioClipTrack track, String url)
+      : _url = url,
+        super(track) {
     volume = 0;
 
     track.onVolumeChange.listen((v) {
@@ -134,6 +135,13 @@ class CrossOriginAudioClip extends ClipBase {
     var start = this.volume;
     var i = 1;
 
+    if (volume > 0 && (audio == null || audio!.paused)) {
+      audio = AudioElement(_url)
+        ..loop = true
+        ..controls = true
+        ..play();
+    }
+
     var step = 20;
 
     _volumeTimer = Timer.periodic(Duration(milliseconds: step), (timer) {
@@ -142,6 +150,11 @@ class CrossOriginAudioClip extends ClipBase {
       if (t < 1) {
         this.volume = start + t * (volume - start);
       } else {
+        this.volume = volume.toDouble();
+        if (this.volume == 0 && audio != null) {
+          // dispose element?
+          audio!.pause();
+        }
         timer.cancel();
       }
 
