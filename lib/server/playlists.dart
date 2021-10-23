@@ -6,29 +6,64 @@ import 'package:path/path.dart' as path;
 
 class PlaylistCollection {
   final Directory directory;
+  final Directory tracksDirectory;
   final File file;
-  final List<Playlist> _playlists = [];
+
+  List<Playlist> _playlists = [];
   Iterable<Playlist> get playlists => _playlists;
 
   PlaylistCollection(this.directory)
-      : file = File(path.join(directory.path, 'playlists.json'));
+      : file = File(path.join(directory.path, 'meta.json')),
+        tracksDirectory = Directory(path.join(directory.path, 'tracks'));
 
-  Future<void> load() async {
-    if (!await file.exists()) return;
-
-    var content = await file.readAsString();
-    var json = jsonDecode(content);
-
-    _playlists
-      ..clear()
-      ..addAll(List.from(json['playlists']).map((j) => Playlist.fromJson(j)));
+  Future<void> reload() async {
+    await loadMeta();
+    await readSource();
   }
 
-  Future<void> save() async {
-    var json = {'playlists': _playlists};
+  Future<void> loadMeta() async {
+    if (await file.exists()) {
+      var content = await file.readAsString();
+      var json = jsonDecode(content);
+
+      var tracks =
+          List.from(json['tracks']).map((j) => TrackInfo.fromJson(j)).toSet();
+
+      _playlists = List.from(json['playlists'])
+          .map((j) => Playlist.fromJson(tracks, j))
+          .toList();
+    }
+  }
+
+  Future<void> saveMeta() async {
+    var allTracks = _playlists.expand((pl) => pl.tracks);
+    var tracks = <TrackInfo>[];
+
+    for (var track in allTracks) {
+      if (!tracks.any((t) => t.id == track.id)) {
+        tracks.add(track);
+      }
+    }
+
+    var json = {
+      'tracks': tracks,
+      'playlists': _playlists,
+    };
     var content = JsonEncoder.withIndent('  ').convert(json);
 
     await file.writeAsString(content);
+  }
+
+  Future<void> readSource() async {
+    var file = File(path.join(directory.path, 'source.json'));
+    var json = jsonDecode(await file.readAsString());
+
+    for (var pl in json['playlists']) {
+      String? id = (pl is String) ? pl : pl['id'];
+      if (id != null) {
+        await addPlaylist(id, download: false);
+      }
+    }
   }
 
   Playlist? getPlaylist(String url) {
@@ -40,15 +75,26 @@ class PlaylistCollection {
     return null;
   }
 
-  Future<Playlist> addPlaylist(String url, {download = true}) async {
-    var pl = getPlaylist(url) ?? await Playlist.extract(url);
-    _playlists.add(pl);
+  Future<Playlist> addPlaylist(String url, {bool download = true}) async {
+    Playlist? pl = getPlaylist(url);
+
+    if (pl == null) {
+      pl = await Playlist.extract(url, _playlists.expand((pl) => pl.tracks));
+      _playlists.add(pl);
+      await saveMeta();
+    }
 
     if (download) {
-      await pl.download(Directory(path.join(directory.path, 'tracks')));
+      await pl.download(tracksDirectory);
     }
 
     return pl;
+  }
+
+  Future<void> sync() async {
+    for (var pl in _playlists) {
+      await pl.download(tracksDirectory);
+    }
   }
 }
 
@@ -59,21 +105,22 @@ class Playlist {
 
   Playlist(this.id, this.title, this.tracks);
 
-  Playlist.fromJson(Map<String, dynamic> json)
+  Playlist.fromJson(Set<TrackInfo> tracks, Map<String, dynamic> json)
       : this(
             json['id'],
             json['title'],
             List.from(json['tracks'])
-                .map((j) => TrackInfo.fromJson(j))
+                .map((id) => tracks.firstWhere((t) => t.id == id))
                 .toList());
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
-        'tracks': tracks.map((e) => e.toJson()).toList(),
+        'tracks': tracks.map((t) => t.id).toList(),
       };
 
-  static Future<Playlist> extract(String url) async {
+  static Future<Playlist> extract(String url,
+      [Iterable<TrackInfo>? reuse]) async {
     var meta = await _collectYTDLLines([
       '-J',
       '--flat-playlist',
@@ -83,26 +130,32 @@ class Playlist {
     var json = jsonDecode(meta[0]);
 
     List entries = json['entries'];
-    var tracks = entries
-        .map((j) => TrackInfo(
-              j['id'],
-              j['title'],
-              j['uploader'],
-              j['duration'].toInt(),
-            ))
-        .toList();
+    var tracks = entries.map((j) {
+      String id = j['id'];
+
+      if (reuse != null && reuse.any((t) => t.id == id)) {
+        return reuse.firstWhere((t) => t.id == id);
+      }
+
+      String title = j['title'];
+      String uploader = j['uploader'];
+      int duration = (j['duration'] as num).toInt();
+
+      return TrackInfo(id, title, uploader, duration);
+    }).toList();
 
     return Playlist(json['id'], json['title'], tracks);
   }
 
-  Future<void> download(Directory directory, {int threads = 8}) async {
+  Future<void> download(Directory directory,
+      {int threads = 8, void Function()? onProgress}) async {
     var queue = List<TrackInfo>.from(tracks);
     var completer = Completer();
     var count = 0;
     for (var i = 0; i < threads; i++) {
       _downloadThread(directory, queue, () {
         count++;
-        print('Downloaded track $count/${tracks.length}');
+        //print('Downloaded track $count/${tracks.length}');
 
         if (count == tracks.length) {
           completer.complete();
@@ -135,21 +188,21 @@ class Playlist {
 
 class TrackInfo {
   final String id;
-  final String title;
-  final String channel;
+  String title;
+  String artist;
   final int duration;
 
   String get thumbnail => 'https://i.ytimg.com/vi_webp/$id/maxresdefault.webp';
 
-  TrackInfo(this.id, this.title, this.channel, this.duration);
+  TrackInfo(this.id, this.title, this.artist, this.duration);
 
   TrackInfo.fromJson(Map<String, dynamic> json)
-      : this(json['id'], json['title'], json['channel'], json['duration']);
+      : this(json['id'], json['title'], json['artist'], json['duration']);
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
-        'channel': channel,
+        'artist': artist,
         'duration': duration,
       };
 

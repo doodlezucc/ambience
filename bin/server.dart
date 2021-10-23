@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -27,11 +28,9 @@ void main(List<String> args) async {
   final server = await serve(_handler, ip, port);
   print('Server listening on port ${server.port}');
 
-  await collection.load();
-  await collection.addPlaylist('PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM');
-  print('Downloaded!');
-  await collection.save();
-  print('Saved!');
+  await collection.reload();
+  await collection.sync();
+  print('Synced!');
 }
 
 Response _cors(Response response) => response.change(headers: {
@@ -82,6 +81,7 @@ Future<Response> _audioHandler(Request request) async {
   var tracks = collection.playlists.first.tracks;
 
   var pick = tracks[Random().nextInt(tracks.length)];
+  print(pick);
 
   return Response.ok(pick.id);
 }
