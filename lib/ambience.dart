@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:web_audio';
 
-import 'audio_track.dart';
-
 const defaultTransition = 10;
 
 class Ambience {
@@ -92,11 +90,13 @@ abstract class ClipBase {
   void fadeVolume(num volume, {num transition = defaultTransition});
 }
 
-class PlaylistAudioClipTrack extends AudioClipTrack {
+class ClipPlaylist<T extends TrackBase> {
+  final T track;
+
   int _index = 0;
   Timer? _timer;
 
-  PlaylistAudioClipTrack(Ambience ambience) : super(ambience);
+  ClipPlaylist(this.track);
 
   void start() {
     cueClip(_index, transition: 1);
@@ -104,10 +104,10 @@ class PlaylistAudioClipTrack extends AudioClipTrack {
 
   void skip() {
     _timer?.cancel();
-    activeClip?.fadeOut(transition: 2);
+    track.activeClip?.fadeOut(transition: 2);
 
     _timer = Timer(Duration(seconds: 1), () {
-      cueClip((_index + 1) % _clips.length, transition: 0.1);
+      cueClip((_index + 1) % track._clips.length, transition: 0.1);
     });
   }
 
@@ -115,16 +115,17 @@ class PlaylistAudioClipTrack extends AudioClipTrack {
     cueClip(null, transition: defaultTransition);
   }
 
-  @override
   void cueClip(int? index, {num transition = 1}) {
-    super.cueClip(index, transition: transition);
+    track.cueClip(index, transition: transition);
 
     _timer?.cancel();
     if (index != null) {
       _index = index;
 
       _timer = Timer(Duration(seconds: 2), () {
-        _timer = Timer(Duration(seconds: activeClip!.duration.toInt() - 2), () {
+        var duration = track.activeClip!.duration.toInt();
+
+        _timer = Timer(Duration(seconds: duration - 2), () {
           skip();
         });
       });

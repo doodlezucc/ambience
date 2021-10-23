@@ -8,11 +8,12 @@ import 'package:http/http.dart' as http;
 final httpClient = http.Client();
 
 class CustomAmbience extends Ambience {
-  late final PlaylistAudioClipTrack music;
+  late final ClipPlaylist music;
   late final FilterableAudioClipTrack weather;
 
   CustomAmbience() {
-    music = PlaylistAudioClipTrack(this);
+    var musicTrack = AudioClipTrack(this);
+    music = ClipPlaylist(musicTrack);
     weather = FilterableAudioClipTrack(this);
 
     httpClient.get(Uri.parse('http://localhost:7070/audio')).then((response) {
@@ -21,11 +22,11 @@ class CustomAmbience extends Ambience {
       print(json['tracks']);
 
       for (var track in json['tracks']) {
-        CrossOriginAudioClip(music,
+        CrossOriginAudioClip(musicTrack,
             'http://localhost:7070/resources/music/tracks/${track['id']}.mp3');
       }
 
-      music.cueClip(0);
+      music.start();
     });
 
     FilterableAudioClip(
