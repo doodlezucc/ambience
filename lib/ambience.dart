@@ -103,12 +103,16 @@ class PlaylistAudioClipTrack extends AudioClipTrack {
   }
 
   void skip() {
-    print('skipu');
-    cueClip((_index + 1) % _clips.length);
+    _timer?.cancel();
+    activeClip?.fadeOut(transition: 2);
+
+    _timer = Timer(Duration(seconds: 1), () {
+      cueClip((_index + 1) % _clips.length, transition: 0.1);
+    });
   }
 
   void stop() {
-    cueClip(null, transition: 1);
+    cueClip(null, transition: defaultTransition);
   }
 
   @override

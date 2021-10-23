@@ -137,7 +137,6 @@ class CrossOriginAudioClip extends ClipBase {
 
     if (volume > 0 && (audio == null || audio!.paused)) {
       audio = AudioElement(_url)
-        ..loop = true
         ..controls = true
         ..play();
     }
