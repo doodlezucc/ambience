@@ -1,0 +1,201 @@
+{
+  "tracks": [
+    {
+      "id": "9YfrZaql4EE",
+      "title": "A Drink Deserved",
+      "artist": "Hayden McGowan",
+      "duration": 175
+    },
+    {
+      "id": "GrfwoMw3EFU",
+      "title": "Maiden's Lullaby",
+      "artist": "Adrian von Ziegler",
+      "duration": 129
+    },
+    {
+      "id": "V_Z6MkNh4yM",
+      "title": "Winter Journey",
+      "artist": "TeknoAXE",
+      "duration": 306
+    },
+    {
+      "id": "gNzjCBCeTE0",
+      "title": "Laid Back Guitars",
+      "artist": "Kevin MacLeod",
+      "duration": 245
+    },
+    {
+      "id": "ZUoZ89Dbga4",
+      "title": "Difficult Money",
+      "artist": "Adelmo Abraham",
+      "duration": 251
+    },
+    {
+      "id": "UWbzDiDgVA8",
+      "title": "Bitter Obsession",
+      "artist": "Adelmo Abraham",
+      "duration": 310
+    },
+    {
+      "id": "iGKBw4WbZR8",
+      "title": "Blues Of What",
+      "artist": "Adelmo Abraham",
+      "duration": 378
+    },
+    {
+      "id": "BNBUVNYOmcA",
+      "title": "Delusion",
+      "artist": "Alexandr Zhelanov",
+      "duration": 109
+    },
+    {
+      "id": "ZPQ3sxPpG24",
+      "title": "I Hate He's Trouble",
+      "artist": "Adelmo Abraham",
+      "duration": 143
+    },
+    {
+      "id": "yQreHcNIPHY",
+      "title": "Illuminate",
+      "artist": "Vindsvept",
+      "duration": 202
+    },
+    {
+      "id": "vLTgPUYjn3s",
+      "title": "King's Feast",
+      "artist": "Random Mind",
+      "duration": 131
+    },
+    {
+      "id": "QuTY4GSQHT8",
+      "title": "Never Go Full Bard",
+      "artist": "Hitctrl",
+      "duration": 148
+    },
+    {
+      "id": "qdSSw69aglQ",
+      "title": "The Noble Quarters",
+      "artist": "Brandon Fiechter",
+      "duration": 247
+    },
+    {
+      "id": "wtndVC08Rwk",
+      "title": "Pippin the Hunchback",
+      "artist": "Kevin MacLeod",
+      "duration": 194
+    },
+    {
+      "id": "-2HppVow0y8",
+      "title": "Played",
+      "artist": "Noh Dong Hwan",
+      "duration": 195
+    },
+    {
+      "id": "HW_qyam9L7Y",
+      "title": "Prelude For Classical Guitar",
+      "artist": "Aussens@iter",
+      "duration": 145
+    },
+    {
+      "id": "gtUMUpsHXe4",
+      "title": "Remember My Power",
+      "artist": "Adelmo Abraham",
+      "duration": 173
+    },
+    {
+      "id": "b1kUm551sD0",
+      "title": "RPG Ambient 2",
+      "artist": "Hitctrl",
+      "duration": 121
+    },
+    {
+      "id": "lcSMCq6VlUQ",
+      "title": "She Thinks She Knows About Me",
+      "artist": "Adelmo Abraham",
+      "duration": 458
+    },
+    {
+      "id": "iWfcR1CU5bU",
+      "title": "The Silver Sail Inn",
+      "artist": "Gentil Puck",
+      "duration": 99
+    },
+    {
+      "id": "lF4b5nFA1Wo",
+      "title": "Storm For A Lonely Soul",
+      "artist": "Adelmo Abraham",
+      "duration": 139
+    },
+    {
+      "id": "c5F1zvdqHMI",
+      "title": "Strumming By The Fire",
+      "artist": "TeknoAXE",
+      "duration": 138
+    },
+    {
+      "id": "1N-_PVVw718",
+      "title": "Study In E Minor",
+      "artist": "Noh Dong Hwan",
+      "duration": 126
+    },
+    {
+      "id": "ivhLdVg38DY",
+      "title": "Suite del Recuerdo 1:  Evocacion",
+      "artist": "Noh Dong Hwan",
+      "duration": 213
+    },
+    {
+      "id": "ZffDOCZy_bA",
+      "title": "Suonatore di Liuto",
+      "artist": "Kevin MacLeod",
+      "duration": 145
+    },
+    {
+      "id": "2M9NilUbb_8",
+      "title": "Theme Medieval",
+      "artist": "Alexandr Zhelanov",
+      "duration": 174
+    },
+    {
+      "id": "Mf95wQ7Gz20",
+      "title": "Teller of the Tales",
+      "artist": "Kevin MacLeod",
+      "duration": 208
+    }
+  ],
+  "playlists": [
+    {
+      "id": "PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM",
+      "title": "Tavern Music - D&D Background Music",
+      "tracks": [
+        "9YfrZaql4EE",
+        "GrfwoMw3EFU",
+        "V_Z6MkNh4yM",
+        "gNzjCBCeTE0",
+        "ZUoZ89Dbga4",
+        "UWbzDiDgVA8",
+        "iGKBw4WbZR8",
+        "BNBUVNYOmcA",
+        "ZPQ3sxPpG24",
+        "yQreHcNIPHY",
+        "vLTgPUYjn3s",
+        "QuTY4GSQHT8",
+        "qdSSw69aglQ",
+        "wtndVC08Rwk",
+        "-2HppVow0y8",
+        "HW_qyam9L7Y",
+        "gtUMUpsHXe4",
+        "b1kUm551sD0",
+        "lcSMCq6VlUQ",
+        "iWfcR1CU5bU",
+        "lF4b5nFA1Wo",
+        "c5F1zvdqHMI",
+        "1N-_PVVw718",
+        "ivhLdVg38DY",
+        "ZffDOCZy_bA",
+        "2M9NilUbb_8",
+        "Mf95wQ7Gz20"
+      ]
+    }
+  ]
+}

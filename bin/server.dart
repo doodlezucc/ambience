@@ -29,6 +29,7 @@ void main(List<String> args) async {
   print('Server listening on port ${server.port}');
 
   await collection.reload();
+  fixTitleArtists();
   await collection.sync();
   print('Synced!');
 }
@@ -83,5 +84,21 @@ Future<Response> _audioHandler(Request request) async {
   var pick = tracks[Random().nextInt(tracks.length)];
   print(pick);
 
-  return Response.ok(pick.id);
+  return Response.ok(jsonEncode(pick));
+}
+
+/// The playlists I use consists of videos titled "Track title - Artist".
+/// This function corrects all occurrences.
+void fixTitleArtists() {
+  for (var track in collection.allTracks) {
+    var vidName = track.title;
+    var hyphen = vidName.indexOf(' - ');
+
+    if (hyphen >= 0) {
+      track.title = vidName.substring(0, hyphen);
+      track.artist = vidName.substring(hyphen + 3);
+    }
+  }
+
+  collection.saveMeta();
 }

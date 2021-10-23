@@ -12,6 +12,8 @@ class PlaylistCollection {
   List<Playlist> _playlists = [];
   Iterable<Playlist> get playlists => _playlists;
 
+  Iterable<TrackInfo> get allTracks => _playlists.expand((pl) => pl.tracks);
+
   PlaylistCollection(this.directory)
       : file = File(path.join(directory.path, 'meta.json')),
         tracksDirectory = Directory(path.join(directory.path, 'tracks'));
@@ -36,7 +38,6 @@ class PlaylistCollection {
   }
 
   Future<void> saveMeta() async {
-    var allTracks = _playlists.expand((pl) => pl.tracks);
     var tracks = <TrackInfo>[];
 
     for (var track in allTracks) {
@@ -79,7 +80,7 @@ class PlaylistCollection {
     Playlist? pl = getPlaylist(url);
 
     if (pl == null) {
-      pl = await Playlist.extract(url, _playlists.expand((pl) => pl.tracks));
+      pl = await Playlist.extract(url, allTracks);
       _playlists.add(pl);
       await saveMeta();
     }
@@ -249,7 +250,14 @@ class TrackInfo {
   }
 
   @override
-  String toString() => '$title (${Duration(seconds: duration)})';
+  String toString() {
+    var d = Duration(seconds: duration);
+
+    var min = d.inMinutes;
+    var sec = (d.inSeconds % 60).toString().padLeft(2, '0');
+
+    return '$title ($min:$sec)';
+  }
 }
 
 Future<List<String>> getVideosInPlaylist(String playlist) async {

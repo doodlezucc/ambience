@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ambience/ambience.dart';
 import 'package:ambience/audio_clip.dart';
 import 'package:ambience/audio_track.dart';
@@ -14,8 +16,12 @@ class CustomAmbience extends Ambience {
     weather = FilterableAudioClipTrack(this);
 
     httpClient.get(Uri.parse('http://localhost:7070/audio')).then((response) {
+      var json = jsonDecode(response.body);
+
+      print(json);
+
       var url =
-          'http://localhost:7070/resources/music/tracks/${response.body}.mp3';
+          'http://localhost:7070/resources/music/tracks/${json['id']}.mp3';
       CrossOriginAudioClip(music, url).fadeIn();
     });
 
