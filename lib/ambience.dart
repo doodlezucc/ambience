@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:web_audio';
 
+import 'package:http/http.dart';
+
 const defaultTransition = 10;
+final httpClient = Client();
 
 class Ambience {
   late final AudioContext ctx;
@@ -62,7 +65,7 @@ abstract class ClipBase {
   bool _active = false;
   bool get isActive => _active;
 
-  num get duration;
+  Future<num> get duration;
 
   ClipBase(this.track) {
     id = track._clips.length;
@@ -116,24 +119,20 @@ class ClipPlaylist<T extends TrackBase> {
     cueClip(null, transition: defaultTransition);
   }
 
-  void cueClip(int? index, {num transition = 1}) {
+  void cueClip(int? index, {num transition = 1}) async {
     track.cueClip(index, transition: transition);
 
     _timer?.cancel();
     if (index != null) {
       _index = index;
 
-      var waitForMeta = 3;
+      var duration = (await track.activeClip!.duration).toInt();
+      var wait = duration - fadeOutTransition;
 
-      _timer = Timer(Duration(seconds: waitForMeta), () {
-        var duration = track.activeClip!.duration.toInt();
-        var wait = duration - waitForMeta - fadeOutTransition;
-
-        _timer = Timer(
-          Duration(milliseconds: (1000 * wait).round()),
-          () => skip(),
-        );
-      });
+      _timer = Timer(
+        Duration(milliseconds: (1000 * wait).round()),
+        () => skip(),
+      );
     }
   }
 }

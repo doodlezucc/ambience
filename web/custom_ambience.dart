@@ -3,9 +3,6 @@ import 'dart:convert';
 import 'package:ambience/ambience.dart';
 import 'package:ambience/audio_clip.dart';
 import 'package:ambience/audio_track.dart';
-import 'package:http/http.dart' as http;
-
-final httpClient = http.Client();
 
 class CustomAmbience extends Ambience {
   late final ClipPlaylist music;

@@ -39,68 +39,96 @@ abstract class NodeClip extends ClipBase {
 }
 
 class FilterableAudioClip extends NodeClip {
-  late final MediaElementAudioSourceNode sourceNode;
-  late final MediaElementAudioSourceNode sourceNode2;
-  num loopTransition = 5;
-  bool _loopSwitch = false;
+  static final curveLH = _powCurve(false);
+  static final curveHL = _powCurve(true);
+
+  late final AudioBuffer buffer;
+  late final GainNode gain1;
+  late final GainNode gain2;
+  final num loopTransition = 5;
+  bool _playFirst = false;
+  Timer? _timer;
+  final _durationCompleter = Completer<num>();
 
   @override
-  num get duration => sourceNode.mediaElement!.duration;
+  Future<num> get duration => _durationCompleter.future;
 
   FilterableAudioClip(FilterableAudioClipTrack track, String url)
       : super(track) {
-    var a1 = _initUrl(url);
-
-    AudioElement? a2;
-
-    a1.onCanPlay.first.then((_) => a1.play());
-
-    a1.onTimeUpdate.listen((_) {
-      if (!_loopSwitch && a1.currentTime >= a1.duration - loopTransition) {
-        _crossFade(a2!, a1);
-      }
-    });
-
-    a1.onCanPlayThrough.first.then((ev) {
-      a2 = _initUrl(url);
-
-      a2!.onTimeUpdate.listen((_) {
-        if (!_loopSwitch && a2!.currentTime >= a2!.duration - loopTransition) {
-          _crossFade(a1, a2!);
-        }
-      });
-    });
+    gain1 = _createGain();
+    gain2 = _createGain();
+    _init(url);
   }
 
-  void _crossFade(AudioElement fadeIn, AudioElement fadeOut) {
-    _loopSwitch = true;
-    fadeIn.volume = 0;
-    fadeIn.play();
-
-    var i = 1;
-    var step = 50;
-
-    Timer.periodic(Duration(milliseconds: step), (timer) {
-      var t = i * step / (1000 * loopTransition);
-
-      if (t <= 1) {
-        fadeIn.volume = pow(t, 0.65);
-        fadeOut.volume = pow(1 - t, 0.65);
-      } else {
-        fadeOut.currentTime = 0;
-        fadeOut.pause();
-        _loopSwitch = false;
-        timer.cancel();
-      }
-      i++;
-    });
+  Future<void> _init(String url) async {
+    var bytes = await httpClient.readBytes(Uri.parse(url));
+    buffer = await track.ambience.ctx.decodeAudioData(bytes.buffer);
+    _durationCompleter.complete(buffer.duration);
   }
 
-  AudioElement _initUrl(String url) {
-    var element = AudioElement(url)..crossOrigin = 'anonymous';
+  void dispose() {
+    _stopCoroutine();
+  }
 
-    track.ambience.ctx.createMediaElementSource(element).connectNode(clipGain);
-    return element;
+  @override
+  void fadeVolume(num volume, {num transition = defaultTransition}) {
+    super.fadeVolume(volume, transition: transition);
+    if (volume > 0 && _timer == null) {
+      _startCoroutine();
+    } else if (volume == 0) {
+      _stopCoroutine();
+    }
+  }
+
+  void _startCoroutine() async {
+    var loopLength = (1000 * ((await duration) - loopTransition)).round();
+
+    _crossFade();
+
+    _timer = Timer.periodic(
+      Duration(milliseconds: loopLength),
+      (_) => _crossFade(),
+    );
+  }
+
+  void _crossFade() {
+    _playFirst = !_playFirst;
+    var fadeIn = _playFirst ? gain1 : gain2;
+    var fadeOut = _playFirst ? gain2 : gain1;
+
+    fadeOut.gain!.setValueCurveAtTime(
+        curveHL, track.ambience.ctx.currentTime!, loopTransition);
+    fadeIn.gain!.setValueCurveAtTime(
+        curveLH, track.ambience.ctx.currentTime!, loopTransition);
+    _createSource(fadeIn).start();
+  }
+
+  void _stopCoroutine() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  AudioBufferSourceNode _createSource(GainNode gain) {
+    return AudioBufferSourceNode(track.ambience.ctx)
+      ..buffer = buffer
+      ..connectNode(gain);
+  }
+
+  GainNode _createGain() {
+    return GainNode(track.ambience.ctx)..connectNode(clipGain);
+  }
+
+  static List<num> _powCurve(bool startHigh) {
+    var steps = 8;
+
+    var curve = List<num>.generate(steps, (i) {
+      var t = i / (steps - 1);
+      if (startHigh) t = 1 - t;
+
+      return pow(t, 0.65);
+    });
+
+    return curve;
   }
 }
 
@@ -108,6 +136,7 @@ class CrossOriginAudioClip extends ClipBase {
   final String _url;
   final AudioElement audio;
   Timer? _volumeTimer;
+  final _durationCompleter = Completer<num>();
 
   double _volume = 0;
   double get volume => _volume;
@@ -117,7 +146,7 @@ class CrossOriginAudioClip extends ClipBase {
   }
 
   @override
-  num get duration => audio.duration;
+  Future<num> get duration => _durationCompleter.future;
 
   CrossOriginAudioClip(AudioClipTrack track, String url)
       : audio = AudioElement(),
@@ -125,7 +154,10 @@ class CrossOriginAudioClip extends ClipBase {
         super(track) {
     audio
       ..preload = 'metadata'
-      ..controls = true;
+      ..controls = true
+      ..onDurationChange
+          .first
+          .then((_) => _durationCompleter.complete(audio.duration));
     document.body!.append(audio);
 
     volume = 0;
