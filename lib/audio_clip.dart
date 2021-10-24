@@ -42,25 +42,26 @@ class FilterableAudioClip extends NodeClip {
   static final curveLH = _powCurve(false);
   static final curveHL = _powCurve(true);
 
+  final String url;
   late final AudioBuffer buffer;
   late final GainNode gain1;
   late final GainNode gain2;
   final num loopTransition = 5;
   bool _playFirst = false;
+  bool _initialized = false;
   Timer? _timer;
   final _durationCompleter = Completer<num>();
 
   @override
   Future<num> get duration => _durationCompleter.future;
 
-  FilterableAudioClip(FilterableAudioClipTrack track, String url)
-      : super(track) {
+  FilterableAudioClip(FilterableAudioClipTrack track, this.url) : super(track) {
     gain1 = _createGain();
     gain2 = _createGain();
-    _init(url);
   }
 
-  Future<void> _init(String url) async {
+  Future<void> _init() async {
+    _initialized = true;
     var bytes = await httpClient.readBytes(Uri.parse(url));
     buffer = await track.ambience.ctx.decodeAudioData(bytes.buffer);
     _durationCompleter.complete(buffer.duration);
@@ -74,6 +75,9 @@ class FilterableAudioClip extends NodeClip {
   void fadeVolume(num volume, {num transition = defaultTransition}) {
     super.fadeVolume(volume, transition: transition);
     if (volume > 0 && _timer == null) {
+      if (!_initialized) {
+        _init();
+      }
       _startCoroutine();
     } else if (volume == 0) {
       _stopCoroutine();
