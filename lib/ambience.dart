@@ -92,6 +92,7 @@ abstract class ClipBase {
 
 class ClipPlaylist<T extends TrackBase> {
   final T track;
+  num fadeOutTransition = 2;
 
   int _index = 0;
   Timer? _timer;
@@ -104,7 +105,7 @@ class ClipPlaylist<T extends TrackBase> {
 
   void skip() {
     _timer?.cancel();
-    track.activeClip?.fadeOut(transition: 2);
+    track.activeClip?.fadeOut(transition: fadeOutTransition);
 
     _timer = Timer(Duration(seconds: 1), () {
       cueClip((_index + 1) % track._clips.length, transition: 0.1);
@@ -122,12 +123,16 @@ class ClipPlaylist<T extends TrackBase> {
     if (index != null) {
       _index = index;
 
-      _timer = Timer(Duration(seconds: 2), () {
-        var duration = track.activeClip!.duration.toInt();
+      var waitForMeta = 3;
 
-        _timer = Timer(Duration(seconds: duration - 2), () {
-          skip();
-        });
+      _timer = Timer(Duration(seconds: waitForMeta), () {
+        var duration = track.activeClip!.duration.toInt();
+        var wait = duration - waitForMeta - fadeOutTransition;
+
+        _timer = Timer(
+          Duration(milliseconds: (1000 * wait).round()),
+          () => skip(),
+        );
       });
     }
   }

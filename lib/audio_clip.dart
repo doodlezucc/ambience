@@ -106,22 +106,28 @@ class FilterableAudioClip extends NodeClip {
 
 class CrossOriginAudioClip extends ClipBase {
   final String _url;
-  AudioElement? audio;
+  final AudioElement audio;
   Timer? _volumeTimer;
 
   double _volume = 0;
   double get volume => _volume;
   set volume(double volume) {
     _volume = volume;
-    audio?.volume = track.ambience.volume * track.volume * volume;
+    audio.volume = track.ambience.volume * track.volume * volume;
   }
 
   @override
-  num get duration => audio!.duration;
+  num get duration => audio.duration;
 
   CrossOriginAudioClip(AudioClipTrack track, String url)
-      : _url = url,
+      : audio = AudioElement(),
+        _url = url,
         super(track) {
+    audio
+      ..preload = 'metadata'
+      ..controls = true;
+    document.body!.append(audio);
+
     volume = 0;
 
     track.onVolumeChange.listen((v) {
@@ -135,9 +141,9 @@ class CrossOriginAudioClip extends ClipBase {
     var start = this.volume;
     var i = 1;
 
-    if (volume > 0 && (audio == null || audio!.paused)) {
-      audio = AudioElement(_url)
-        ..controls = true
+    if (volume > 0 && audio.paused) {
+      audio
+        ..src = _url
         ..play();
     }
 
@@ -150,9 +156,8 @@ class CrossOriginAudioClip extends ClipBase {
         this.volume = start + t * (volume - start);
       } else {
         this.volume = volume.toDouble();
-        if (this.volume == 0 && audio != null) {
-          // dispose element?
-          audio!.pause();
+        if (volume == 0) {
+          audio.src = '';
         }
         timer.cancel();
       }
