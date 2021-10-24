@@ -3,7 +3,7 @@ import 'dart:web_audio';
 
 import 'package:http/http.dart';
 
-const defaultTransition = 10;
+const defaultTransition = 7;
 final httpClient = Client();
 
 class Ambience {
@@ -33,7 +33,6 @@ mixin AmbienceObject {
 }
 
 abstract class TrackBase<C extends ClipBase> with AmbienceObject {
-  late final int id;
   final List<C> _clips = [];
 
   int? _activeClip;
@@ -43,9 +42,13 @@ abstract class TrackBase<C extends ClipBase> with AmbienceObject {
   set volume(num volume);
 
   TrackBase(Ambience ambience) {
-    id = ambience._tracks.length;
     ambience._tracks.add(this);
     this.ambience = ambience;
+  }
+
+  C addClip(String url);
+  Iterable<C> addAll(Iterable<String> urls) {
+    return urls.map((url) => addClip(url)).toList();
   }
 
   void cueClip(int? index, {num transition = defaultTransition}) {

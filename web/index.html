@@ -14,11 +14,20 @@
 </head>
 
 <body>
-  <button id="change">Start Audio Context</button>
   <input type="range" id="volume" min="0" max="1" step="0.001">
+
+  <span>Weather</span>
+  <input type="range" id="weatherV" min="0" max="1" step="0.001">
+  <input type="range" id="weather" min="-1" max="2">
   <input type="range" id="filter" min="20" max="10000" value="10000">
 
-  <button id="skip">Skip</button>
+  <span>Crowd</span>
+  <input type="range" id="crowdV" min="0" max="1" step="0.001">
+  <input type="range" id="crowd" min="-1" max="1">
+
+  <span>Music</span>
+  <input type="range" id="musicV" min="0" max="1" step="0.001">
+  <button id="skip">Skip Track</button>
 </body>
 
 </html>

@@ -22,6 +22,11 @@ class AudioClipTrack extends TrackBase<CrossOriginAudioClip> {
   AudioClipTrack(Ambience ambience) : super(ambience) {
     ambience.onVolumeChange.listen((_) => volume = volume);
   }
+
+  @override
+  CrossOriginAudioClip addClip(String url) {
+    return CrossOriginAudioClip(this, url);
+  }
 }
 
 class FilterableAudioClipTrack extends TrackBase<FilterableAudioClip> {
@@ -33,8 +38,6 @@ class FilterableAudioClipTrack extends TrackBase<FilterableAudioClip> {
     ..type = 'lowpass'
     ..frequency!.value = 20000;
 
-  FilterableAudioClipTrack(Ambience ambience) : super(ambience);
-
   @override
   num get volume => trackGain.gain!.value!;
 
@@ -43,4 +46,11 @@ class FilterableAudioClipTrack extends TrackBase<FilterableAudioClip> {
 
   num get filter => filterNode.frequency!.value!;
   set filter(num filter) => filterNode.frequency!.value = filter;
+
+  FilterableAudioClipTrack(Ambience ambience) : super(ambience);
+
+  @override
+  FilterableAudioClip addClip(String url) {
+    return FilterableAudioClip(this, url);
+  }
 }
