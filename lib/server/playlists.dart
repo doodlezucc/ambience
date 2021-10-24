@@ -7,7 +7,8 @@ import 'package:path/path.dart' as path;
 class PlaylistCollection {
   final Directory directory;
   final Directory tracksDirectory;
-  final File file;
+  final File metaFile;
+  int _lastMod = 0;
 
   List<Playlist> _playlists = [];
   Iterable<Playlist> get playlists => _playlists;
@@ -15,7 +16,7 @@ class PlaylistCollection {
   Iterable<TrackInfo> get allTracks => _playlists.expand((pl) => pl.tracks);
 
   PlaylistCollection(this.directory)
-      : file = File(path.join(directory.path, 'meta.json')),
+      : metaFile = File(path.join(directory.path, 'meta.json')),
         tracksDirectory = Directory(path.join(directory.path, 'tracks'));
 
   Future<void> reload() async {
@@ -24,9 +25,11 @@ class PlaylistCollection {
   }
 
   Future<void> loadMeta() async {
-    if (await file.exists()) {
-      var content = await file.readAsString();
+    if (await metaFile.exists()) {
+      var content = await metaFile.readAsString();
       var json = jsonDecode(content);
+
+      _lastMod = json['modified'] ?? 0;
 
       var tracks =
           List.from(json['tracks']).map((j) => TrackInfo.fromJson(j)).toSet();
@@ -47,22 +50,48 @@ class PlaylistCollection {
     }
 
     var json = {
+      'modified': _lastMod,
       'tracks': tracks,
       'playlists': _playlists,
     };
     var content = JsonEncoder.withIndent('  ').convert(json);
 
-    await file.writeAsString(content);
+    await metaFile.writeAsString(content);
   }
 
   Future<void> readSource() async {
     var file = File(path.join(directory.path, 'source.json'));
+
+    if (!await file.exists()) return;
+
+    var sourceMod = (await file.lastModified()).millisecondsSinceEpoch;
+    var update = sourceMod > _lastMod;
+
+    if (update) {
+      _lastMod = sourceMod;
+      print('Updating...');
+    }
+
     var json = jsonDecode(await file.readAsString());
 
     for (var pl in json['playlists']) {
-      String? id = (pl is String) ? pl : pl['id'];
+      String? id;
+      Iterable<String>? exclude;
+
+      if (pl is String) {
+        id = pl;
+      } else {
+        id = pl['id'];
+        exclude = List.from(pl['exclude']);
+      }
+
       if (id != null) {
-        await addPlaylist(id, download: false);
+        await addPlaylist(
+          id,
+          download: false,
+          exclude: exclude,
+          update: update,
+        );
       }
     }
   }
@@ -76,11 +105,25 @@ class PlaylistCollection {
     return null;
   }
 
-  Future<Playlist> addPlaylist(String url, {bool download = true}) async {
+  Future<Playlist> addPlaylist(
+    String url, {
+    bool download = true,
+    bool update = false,
+    Iterable<String>? exclude,
+  }) async {
     Playlist? pl = getPlaylist(url);
 
+    if (update && pl != null) {
+      _playlists.remove(pl);
+      pl = null;
+    }
+
     if (pl == null) {
-      pl = await Playlist.extract(url, allTracks);
+      pl = await Playlist.extract(
+        url,
+        reuse: allTracks,
+        exclude: exclude ?? const [],
+      );
       _playlists.add(pl);
       await saveMeta();
     }
@@ -120,8 +163,11 @@ class Playlist {
         'tracks': tracks.map((t) => t.id).toList(),
       };
 
-  static Future<Playlist> extract(String url,
-      [Iterable<TrackInfo>? reuse]) async {
+  static Future<Playlist> extract(
+    String url, {
+    Iterable<TrackInfo>? reuse,
+    Iterable<String> exclude = const [],
+  }) async {
     var meta = await _collectYTDLLines([
       '-J',
       '--flat-playlist',
@@ -131,7 +177,7 @@ class Playlist {
     var json = jsonDecode(meta[0]);
 
     List entries = json['entries'];
-    var tracks = entries.map((j) {
+    var tracks = entries.where((j) => !exclude.contains(j['id'])).map((j) {
       String id = j['id'];
 
       if (reuse != null && reuse.any((t) => t.id == id)) {

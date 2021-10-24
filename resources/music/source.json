@@ -1,5 +1,12 @@
 {
   "playlists": [
-    "PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM"
+    {
+      "id": "PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM",
+      "exclude": [
+        "_ujlcageCKA",
+        "AIVi63xKIRE",
+        "c5F1zvdqHMI"
+      ]
+    }
   ]
 }
