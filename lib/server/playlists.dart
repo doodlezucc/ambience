@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:progressbar2/progressbar2.dart';
 
 class PlaylistCollection {
   final Directory directory;
@@ -194,18 +195,66 @@ class Playlist {
     return Playlist(json['id'], json['title'], tracks);
   }
 
-  Future<void> download(Directory directory,
-      {int threads = 8, void Function()? onProgress}) async {
-    var queue = List<TrackInfo>.from(tracks);
+  DownloadTask _trackToTask(TrackInfo track, Directory dir) =>
+      DownloadTask(track, File(path.join(dir.path, '${track.id}.mp3')));
+
+  Future<void> download(
+    Directory directory, {
+    int threads = 8,
+    void Function(double progress)? onProgress,
+  }) async {
+    var queue = tracks.map((e) => _trackToTask(e, directory)).toList();
+
+    ProgressBar? progressBar;
+
+    if (stdout.hasTerminal) {
+      var token = ProgressBar.formatterBarToken;
+      progressBar = ProgressBar(
+        total: 10000,
+        formatter: (current, total, progress, elapsed) {
+          var percentage = (100 * progress).toStringAsFixed(2) + '%';
+
+          return '[$token] $percentage';
+        },
+        width: 100,
+      );
+    }
+
     var completer = Completer();
     var count = 0;
+    var progress = 0.0;
     for (var i = 0; i < threads; i++) {
-      _downloadThread(directory, queue, () {
+      _downloadThread(directory, queue, (downloaded) {
         count++;
-        //print('Downloaded track $count/${tracks.length}');
+        if (downloaded && progressBar == null) {
+          print('Downloaded track $count/${tracks.length}');
+        }
 
         if (count == tracks.length) {
           completer.complete();
+        }
+      }, () {
+        progress =
+            queue.fold<double>(0, (v, e) => v + e.progress) / queue.length;
+
+        if (onProgress != null) onProgress(progress);
+
+        if (progressBar != null) {
+          progressBar.value = (progress * 10000).floor();
+          progressBar.render();
+        }
+      });
+    }
+
+    if (progressBar == null) {
+      var lastProgress = 0;
+
+      Timer.periodic(Duration(seconds: 2), (t) {
+        if (completer.isCompleted) {
+          t.cancel();
+        } else if (progress != lastProgress) {
+          var percentage = (progress * 100).toStringAsFixed(2).padLeft(6);
+          print('Downloading... $percentage%');
         }
       });
     }
@@ -214,22 +263,45 @@ class Playlist {
   }
 
   void _downloadThread(
-      Directory dir, List<TrackInfo> queue, void Function() onSuccess) {
-    if (queue.isNotEmpty) {
-      var track = queue.removeAt(0);
+    Directory dir,
+    List<DownloadTask> queue,
+    void Function(bool downloaded) onSuccess,
+    void Function() onProgress,
+  ) {
+    for (var task in queue) {
+      if (!task.isDownloading) {
+        task.download(onProgress).then((result) {
+          if (result != DownloadResult.failed) {
+            onSuccess(result == DownloadResult.downloaded);
+          }
 
-      track
-          .download(File(path.join(dir.path, '${track.id}.mp3')))
-          .then((success) {
-        if (success) {
-          onSuccess();
-        } else {
-          queue.add(track);
-        }
-
-        _downloadThread(dir, queue, onSuccess);
-      });
+          _downloadThread(dir, queue, onSuccess, onProgress);
+        });
+        return;
+      }
     }
+  }
+}
+
+enum DownloadResult { failed, downloaded, skipped }
+
+/// amogus
+class DownloadTask {
+  final TrackInfo track;
+  final File file;
+  bool isDownloading = false;
+  double progress = 0;
+
+  DownloadTask(this.track, this.file);
+
+  Future<DownloadResult> download(void Function() onProgressUpdate) async {
+    isDownloading = true;
+    var result = await track.download(file, onProgress: (p) {
+      progress = p;
+      onProgressUpdate();
+    });
+    if (result == DownloadResult.failed) isDownloading = false;
+    return result;
   }
 }
 
@@ -269,29 +341,44 @@ class TrackInfo {
     );
   }
 
-  Future<bool> download(File file,
-      {String format = 'bestaudio', bool redownload = false}) async {
+  Future<DownloadResult> download(
+    File file, {
+    String format = '140/bestaudio',
+    bool redownload = false,
+    void Function(double progress)? onProgress,
+  }) async {
     if (!redownload && await file.exists()) {
-      return true;
+      if (onProgress != null) onProgress(1);
+      return DownloadResult.skipped;
     }
 
+    var tmp = file.path + '.tmp';
+
     try {
-      await _collectYTDLLines([
-        '-f',
-        format,
-        '--extract-audio',
-        '--audio-format',
-        'mp3',
-        '-o',
+      await _collectYTDLLines(
+        ['-f', format, '-o', tmp, '--', id],
+        onProgress: onProgress,
+      );
+
+      await _collectProcessLines('ffmpeg', [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        tmp,
+        '-c:a',
+        'libmp3lame',
+        '-q:a',
+        '5',
         file.path,
-        '--',
-        id,
       ]);
 
-      return true;
+      await File(tmp).delete();
+
+      return DownloadResult.downloaded;
     } catch (e) {
       print(e);
-      return false;
+      return DownloadResult.failed;
     }
   }
 
@@ -316,14 +403,45 @@ Future<List<String>> getVideosInPlaylist(String playlist) async {
   return lines;
 }
 
-Future<List<String>> _collectYTDLLines(List<String> arguments,
-    {bool debug = false}) async {
-  var process = await Process.start('youtube-dl', arguments);
+Future<List<String>> _collectYTDLLines(
+  List<String> arguments, {
+  bool debug = false,
+  void Function(double progress)? onProgress,
+}) async {
+  var lines = await _collectProcessLines(
+    'youtube-dl',
+    arguments,
+    debug: debug,
+    onStdOut: (s) {
+      if (onProgress != null) {
+        var char = s.indexOf('%');
+        if (char > 10) {
+          var percentage = s.substring(char - 4, char).trimLeft();
+
+          onProgress(double.parse(percentage) / 100);
+        }
+      }
+    },
+  );
+
+  if (onProgress != null) onProgress(1);
+  return lines;
+}
+
+Future<List<String>> _collectProcessLines(
+  String exe,
+  List<String> arguments, {
+  bool debug = false,
+  void Function(String s)? onStdOut,
+}) async {
+  var process = await Process.start(exe, arguments);
 
   var lines = <String>[];
 
   process.stdout.listen((data) {
     var s = utf8.decode(data).trimRight();
+    if (onStdOut != null) onStdOut(s);
+
     lines.addAll(s.split('\n'));
     if (debug) {
       print(s);
@@ -338,5 +456,5 @@ Future<List<String>> _collectYTDLLines(List<String> arguments,
     return lines;
   }
 
-  throw 'Error executing youtube-dl';
+  throw 'Error executing $exe';
 }
