@@ -62,7 +62,7 @@ abstract class TrackBase<C extends ClipBase> with AmbienceObject {
     _activeClip = index;
   }
 
-  Future<void> dispose({num fadeOut = 1}) async {
+  Future<void> clear({num fadeOut = 1}) async {
     activeClip?.fadeOut(transition: fadeOut);
     await Future.delayed(Duration(milliseconds: (1000 * fadeOut).toInt()));
 
@@ -176,7 +176,7 @@ class ClipPlaylist<T extends TrackBase> {
 
   Future<void> fromTracklist(
       Tracklist tracklist, String Function(Track track) trackToUrl) async {
-    await track.dispose();
+    await track.clear();
     track.addAll(tracklist.tracks.map(trackToUrl));
     syncToTracklist(tracklist);
   }

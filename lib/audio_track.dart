@@ -5,7 +5,7 @@ import 'package:ambience/ambience.dart';
 import 'package:ambience/audio_clip.dart';
 
 class AudioClipTrack extends TrackBase<CrossOriginAudioClip> {
-  final _ctrl = StreamController<num>.broadcast();
+  var _ctrl = StreamController<num>.broadcast();
   Stream<num> get onVolumeChange => _ctrl.stream;
 
   num _volume = 0.8;
@@ -26,6 +26,13 @@ class AudioClipTrack extends TrackBase<CrossOriginAudioClip> {
   @override
   CrossOriginAudioClip addClip(String url) {
     return CrossOriginAudioClip(this, url);
+  }
+
+  @override
+  Future<void> clear({num fadeOut = 1}) {
+    _ctrl.close();
+    _ctrl = StreamController<num>.broadcast();
+    return super.clear(fadeOut: fadeOut);
   }
 }
 

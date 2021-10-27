@@ -162,7 +162,6 @@ class CrossOriginAudioClip extends ClipBase {
         super(track) {
     audio
       ..autoplay = true
-      ..controls = true
       ..onDurationChange
           .first
           .then((_) => _durationCompleter.complete(audio.duration));
@@ -185,7 +184,6 @@ class CrossOriginAudioClip extends ClipBase {
     _volumeTimer?.cancel();
 
     if (volume > 0 && audio.paused) {
-      document.body!.append(audio);
       audio.src = _url;
       audio.currentTime = secondsIn;
     }

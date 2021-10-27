@@ -71,7 +71,7 @@ class PlaylistCollection {
 
     if (update) {
       _lastMod = sourceMod;
-      print('Updating...');
+      print('Updating ambience meta...');
     }
 
     var json = jsonDecode(await file.readAsString());
