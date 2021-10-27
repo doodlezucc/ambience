@@ -28,27 +28,67 @@ class Track {
   }
 }
 
+class TrackWithTime {
+  final Track track;
+  final int secondsIn;
+
+  TrackWithTime(this.track, this.secondsIn);
+}
+
 class Tracklist {
-  final List<Track> tracks = [];
+  final List<Track> tracks;
+  DateTime lastChange = DateTime.now();
+  int lastChangeTrack = 0;
 
-  int _index = 0;
-  int get index => _index;
-  set index(int index) {
-    _index = index % tracks.length;
+  Duration get sinceLastChange => DateTime.now().difference(lastChange);
+  int get tracklistDuration => tracks.fold(0, (v, t) => v + t.duration);
+
+  Tracklist(this.tracks);
+  Tracklist.fromJson(json)
+      : tracks = (json['tracks'] as Iterable)
+            .map((j) => Track.fromJson(j))
+            .toList() {
+    if (json['lastChange'] != null && json['lastChangeTrack'] != null) {
+      fromSyncJson(json);
+    }
   }
 
-  Track? get currentTrack => tracks.isEmpty ? null : tracks[index];
-
-  void fromJson(json) {
-    _index = json['index'];
-    tracks.clear();
-    Iterable jTracks = json['tracks'];
-
-    tracks.addAll(jTracks.map((j) => Track.fromJson(j)));
+  void fromSyncJson(json) {
+    lastChange = DateTime.fromMillisecondsSinceEpoch(
+      json['lastChange'],
+      isUtc: true,
+    );
+    lastChangeTrack = json['lastChangeTrack'];
   }
+
+  Map<String, dynamic> toSyncJson() => {
+        'lastChange': lastChange.millisecondsSinceEpoch,
+        'lastChangeTrack': lastChangeTrack,
+      };
 
   Map<String, dynamic> toJson() => {
-        'index': index,
+        ...toSyncJson(),
         'tracks': tracks,
       };
+
+  TrackWithTime getTrackAtTime([DateTime? when]) {
+    when ??= DateTime.now();
+    var seconds = when.difference(lastChange).inSeconds % tracklistDuration;
+
+    for (var i = 0; i < tracks.length; i++) {
+      var track = tracks[(i + lastChangeTrack) % tracks.length];
+      if (seconds >= track.duration) {
+        seconds -= track.duration;
+      } else {
+        return TrackWithTime(track, seconds);
+      }
+    }
+
+    throw 'Failed to get current track, $seconds into the playlist.';
+  }
+
+  void setTrack(int index) {
+    lastChangeTrack = index % tracks.length;
+    lastChange = DateTime.now();
+  }
 }
