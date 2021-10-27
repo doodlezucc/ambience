@@ -18,7 +18,8 @@ abstract class NodeClip extends ClipBase {
   }
 
   @override
-  void fadeVolume(num volume, {num transition = defaultTransition}) {
+  void fadeVolume(num volume,
+      {num transition = defaultTransition, num secondsIn = 0}) {
     var ctx = track.ambience.ctx;
 
     clipGain.gain!.cancelScheduledValues(ctx.currentTime!);
@@ -67,35 +68,38 @@ class FilterableAudioClip extends NodeClip {
     _durationCompleter.complete(buffer.duration);
   }
 
+  @override
   void dispose() {
     _stopCoroutine();
+    clipGain.disconnect();
   }
 
   @override
-  void fadeVolume(num volume, {num transition = defaultTransition}) {
-    super.fadeVolume(volume, transition: transition);
+  void fadeVolume(num volume,
+      {num transition = defaultTransition, num secondsIn = 0}) {
+    super.fadeVolume(volume, transition: transition, secondsIn: secondsIn);
     if (volume > 0 && _timer == null) {
       if (!_initialized) {
         _init();
       }
-      _startCoroutine();
+      _startCoroutine(secondsIn);
     } else if (volume == 0) {
       _stopCoroutine();
     }
   }
 
-  void _startCoroutine() async {
+  void _startCoroutine(num secondsIn) async {
     var loopLength = (1000 * ((await duration) - loopTransition)).round();
 
-    _crossFade();
+    _crossFade(secondsIn);
 
     _timer = Timer.periodic(
       Duration(milliseconds: loopLength),
-      (_) => _crossFade(),
+      (_) => _crossFade(secondsIn),
     );
   }
 
-  void _crossFade() {
+  void _crossFade(num secondsIn) {
     _playFirst = !_playFirst;
     var fadeIn = _playFirst ? gain1 : gain2;
     var fadeOut = _playFirst ? gain2 : gain1;
@@ -104,7 +108,7 @@ class FilterableAudioClip extends NodeClip {
         curveHL, track.ambience.ctx.currentTime!, loopTransition);
     fadeIn.gain!.setValueCurveAtTime(
         curveLH, track.ambience.ctx.currentTime!, loopTransition);
-    _createSource(fadeIn).start();
+    _createSource(fadeIn).start(track.ambience.ctx.currentTime, secondsIn);
   }
 
   void _stopCoroutine() {
@@ -157,12 +161,11 @@ class CrossOriginAudioClip extends ClipBase {
         _url = url,
         super(track) {
     audio
-      ..preload = 'metadata'
+      ..autoplay = true
       ..controls = true
       ..onDurationChange
           .first
           .then((_) => _durationCompleter.complete(audio.duration));
-    document.body!.append(audio);
 
     volume = 0;
 
@@ -172,17 +175,23 @@ class CrossOriginAudioClip extends ClipBase {
   }
 
   @override
-  void fadeVolume(num volume, {num transition = defaultTransition}) {
+  void dispose() {
+    audio.src = '';
+  }
+
+  @override
+  void fadeVolume(num volume,
+      {num transition = defaultTransition, num secondsIn = 0}) {
     _volumeTimer?.cancel();
-    var start = this.volume;
-    var i = 1;
 
     if (volume > 0 && audio.paused) {
-      audio
-        ..src = _url
-        ..play();
+      document.body!.append(audio);
+      audio.src = _url;
+      audio.currentTime = secondsIn;
     }
 
+    var start = this.volume;
+    var i = 1;
     var step = 20;
 
     _volumeTimer = Timer.periodic(Duration(milliseconds: step), (timer) {

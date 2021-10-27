@@ -68,10 +68,16 @@ Future<Response> _router(Request request) async {
 
   if (await file.exists()) {
     var type = getMimeType(file);
+    var length = await file.length();
     return Response(
       200,
       body: file.openRead(),
-      headers: {'Content-Type': type},
+      headers: {
+        'Content-Type': type,
+        'Content-Length': '$length',
+        'Content-Range': 'bytes */$length',
+        'Accept-Ranges': 'bytes',
+      },
     );
   }
 
@@ -79,9 +85,9 @@ Future<Response> _router(Request request) async {
 }
 
 Future<Response> _audioHandler(Request request) async {
-  var tracks = List.from(collection.playlists.first.tracks)..shuffle();
+  var tracklist = collection.playlists.first.toTracklist(shuffle: true);
 
-  return Response.ok(jsonEncode({'tracks': tracks}));
+  return Response.ok(jsonEncode(tracklist));
 }
 
 /// The playlists I use consists of videos titled "Track title - Artist".

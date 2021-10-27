@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:web_audio';
 
+import 'package:ambience/metadata.dart';
 import 'package:http/http.dart';
 
 const defaultTransition = 7;
@@ -51,13 +52,24 @@ abstract class TrackBase<C extends ClipBase> with AmbienceObject {
     return urls.map((url) => addClip(url)).toList();
   }
 
-  void cueClip(int? index, {num transition = defaultTransition}) {
+  void cueClip(int? index,
+      {num transition = defaultTransition, num secondsIn = 0}) {
     activeClip?.fadeOut(transition: transition);
 
     if (index != null) {
-      _clips[index].fadeIn(transition: transition);
+      _clips[index].fadeIn(transition: transition, secondsIn: secondsIn);
     }
     _activeClip = index;
+  }
+
+  Future<void> dispose({num fadeOut = 1}) async {
+    activeClip?.fadeOut(transition: fadeOut);
+    await Future.delayed(Duration(milliseconds: (1000 * fadeOut).toInt()));
+
+    for (var c in _clips) {
+      c.dispose();
+    }
+    _clips.clear();
   }
 }
 
@@ -79,10 +91,10 @@ abstract class ClipBase {
     track.cueClip(id);
   }
 
-  void fadeIn({num transition = defaultTransition}) {
+  void fadeIn({num transition = defaultTransition, num secondsIn = 0}) {
     if (!_active) {
       _active = true;
-      fadeVolume(1, transition: transition);
+      fadeVolume(1, transition: transition, secondsIn: secondsIn);
     }
   }
 
@@ -93,7 +105,10 @@ abstract class ClipBase {
     }
   }
 
-  void fadeVolume(num volume, {num transition = defaultTransition});
+  void fadeVolume(num volume,
+      {num transition = defaultTransition, num secondsIn = 0});
+
+  void dispose();
 }
 
 class ClipPlaylist<T extends TrackBase> {
@@ -106,37 +121,39 @@ class ClipPlaylist<T extends TrackBase> {
 
   int _index = 0;
   int get index => _index;
-  set index(int index) {
+  set index(int index) => _setTrack(index);
+
+  ClipPlaylist(this.track);
+
+  void start() => cueClip(_index, transition: 1);
+
+  void skip() => index++;
+
+  void stop() => cueClip(null, transition: defaultTransition);
+
+  void _setTrack(int index, {num secondsIn = 0}) {
     _index = index % track._clips.length;
     _timer?.cancel();
     track.activeClip?.fadeOut(transition: fadeOutTransition);
 
     _ctrl.sink.add(track._clips[_index]);
     _timer = Timer(Duration(seconds: 1), () {
-      cueClip(_index, transition: 0.1, notifyListeners: false);
+      cueClip(
+        _index,
+        transition: 0.1,
+        notifyListeners: false,
+        secondsIn: secondsIn,
+      );
     });
-  }
-
-  ClipPlaylist(this.track);
-
-  void start() {
-    cueClip(_index, transition: 1);
-  }
-
-  void skip() {
-    index++;
-  }
-
-  void stop() {
-    cueClip(null, transition: defaultTransition);
   }
 
   void cueClip(
     int? index, {
     num transition = 1,
     bool notifyListeners = true,
+    num secondsIn = 0,
   }) async {
-    track.cueClip(index, transition: transition);
+    track.cueClip(index, transition: transition, secondsIn: secondsIn);
     if (notifyListeners) {
       _ctrl.sink.add(track.activeClip);
     }
@@ -146,12 +163,21 @@ class ClipPlaylist<T extends TrackBase> {
       _index = index;
 
       var duration = (await track.activeClip!.duration).toInt();
-      var wait = duration - fadeOutTransition;
+      var wait = duration - fadeOutTransition - secondsIn;
 
-      _timer = Timer(
-        Duration(milliseconds: (1000 * wait).round()),
-        () => skip(),
-      );
+      _timer = Timer(Duration(milliseconds: (1000 * wait).round()), skip);
     }
+  }
+
+  void syncToTracklist(Tracklist tracklist) {
+    var t = tracklist.getTrackAtTime();
+    _setTrack(index, secondsIn: t.secondsIn);
+  }
+
+  Future<void> fromTracklist(
+      Tracklist tracklist, String Function(Track track) trackToUrl) async {
+    await track.dispose();
+    track.addAll(tracklist.tracks.map(trackToUrl));
+    syncToTracklist(tracklist);
   }
 }

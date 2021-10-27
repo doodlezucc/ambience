@@ -165,6 +165,13 @@ class Playlist {
         'tracks': tracks.map((t) => t.id).toList(),
       };
 
+  Tracklist toTracklist({bool shuffle = false}) {
+    var src = tracks;
+    if (shuffle) src.shuffle();
+
+    return Tracklist(src);
+  }
+
   static Future<Playlist> extract(
     String url, {
     Iterable<TrackInfo>? reuse,

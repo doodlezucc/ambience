@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:ambience/ambience.dart';
-import 'package:ambience/audio_clip.dart';
 import 'package:ambience/audio_track.dart';
+import 'package:ambience/metadata.dart';
 
 const server = 'http://localhost:7070';
 
@@ -10,6 +10,7 @@ class CustomAmbience extends Ambience {
   late final ClipPlaylist music;
   late final FilterableAudioClipTrack weather;
   late final FilterableAudioClipTrack crowd;
+  late final Tracklist tracklist;
 
   CustomAmbience() {
     var musicTrack = AudioClipTrack(this);
@@ -17,27 +18,22 @@ class CustomAmbience extends Ambience {
     weather = FilterableAudioClipTrack(this);
     crowd = FilterableAudioClipTrack(this);
 
-    music.onClipChange.listen((clip) {
-      print('CHANGE: ${clip?.id}');
-    });
+    music.onClipChange.listen((clip) => print('CHANGE: ${clip?.id}'));
 
     httpClient.get(Uri.parse('$server/audio')).then((response) {
       var json = jsonDecode(response.body);
 
-      print(json['tracks']);
+      print(json);
+      tracklist = Tracklist.fromJson(json);
 
-      for (var track in json['tracks']) {
-        CrossOriginAudioClip(
-            musicTrack, '$server/resources/music/tracks/${track['id']}.mp3');
-      }
-
-      music.start();
+      music.fromTracklist(tracklist,
+          (track) => '$server/resources/music/tracks/${track.id}.mp3');
     });
 
     weather
       ..addAll(['wind', 'rain', 'heavy-rain']
           .map((id) => '$server/resources/weather-$id.mp3'))
-      ..cueClip(0, transition: 3);
+      ..cueClip(1, transition: 3);
 
     crowd
       ..addAll(['pub', 'market'].map((id) => '$server/resources/crowd-$id.mp3'))

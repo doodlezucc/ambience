@@ -30,9 +30,10 @@ class Track {
 
 class TrackWithTime {
   final Track track;
+  final int playlistIndex;
   final int secondsIn;
 
-  TrackWithTime(this.track, this.secondsIn);
+  TrackWithTime(this.track, this.playlistIndex, this.secondsIn);
 }
 
 class Tracklist {
@@ -76,11 +77,12 @@ class Tracklist {
     var seconds = when.difference(lastChange).inSeconds % tracklistDuration;
 
     for (var i = 0; i < tracks.length; i++) {
-      var track = tracks[(i + lastChangeTrack) % tracks.length];
+      var index = (i + lastChangeTrack) % tracks.length;
+      var track = tracks[index];
       if (seconds >= track.duration) {
         seconds -= track.duration;
       } else {
-        return TrackWithTime(track, seconds);
+        return TrackWithTime(track, index, seconds);
       }
     }
 
