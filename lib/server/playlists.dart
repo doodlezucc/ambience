@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ambience/metadata.dart';
 import 'package:path/path.dart' as path;
 import 'package:progressbar2/progressbar2.dart';
 
@@ -305,25 +306,11 @@ class DownloadTask {
   }
 }
 
-class TrackInfo {
-  final String id;
-  String title;
-  String artist;
-  final int duration;
+class TrackInfo extends Track {
+  TrackInfo(String id, String title, String artist, int duration)
+      : super(id, title, artist, duration);
 
-  String get thumbnail => 'https://i.ytimg.com/vi_webp/$id/maxresdefault.webp';
-
-  TrackInfo(this.id, this.title, this.artist, this.duration);
-
-  TrackInfo.fromJson(Map<String, dynamic> json)
-      : this(json['id'], json['title'], json['artist'], json['duration']);
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'artist': artist,
-        'duration': duration,
-      };
+  TrackInfo.fromJson(json) : super.fromJson(json);
 
   static Future<TrackInfo> extract(String url) async {
     var lines = await _collectYTDLLines([
@@ -380,16 +367,6 @@ class TrackInfo {
       print(e);
       return DownloadResult.failed;
     }
-  }
-
-  @override
-  String toString() {
-    var d = Duration(seconds: duration);
-
-    var min = d.inMinutes;
-    var sec = (d.inSeconds % 60).toString().padLeft(2, '0');
-
-    return '$title ($min:$sec)';
   }
 }
 
