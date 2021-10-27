@@ -99,9 +99,19 @@ abstract class ClipBase {
 class ClipPlaylist<T extends TrackBase> {
   final T track;
   num fadeOutTransition = 2;
+  Timer? _timer;
 
   int _index = 0;
-  Timer? _timer;
+  int get index => _index;
+  set index(int index) {
+    _index = index % track._clips.length;
+    _timer?.cancel();
+    track.activeClip?.fadeOut(transition: fadeOutTransition);
+
+    _timer = Timer(Duration(seconds: 1), () {
+      cueClip(index, transition: 0.1);
+    });
+  }
 
   ClipPlaylist(this.track);
 
@@ -110,12 +120,7 @@ class ClipPlaylist<T extends TrackBase> {
   }
 
   void skip() {
-    _timer?.cancel();
-    track.activeClip?.fadeOut(transition: fadeOutTransition);
-
-    _timer = Timer(Duration(seconds: 1), () {
-      cueClip((_index + 1) % track._clips.length, transition: 0.1);
-    });
+    index++;
   }
 
   void stop() {
