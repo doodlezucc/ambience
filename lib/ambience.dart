@@ -98,8 +98,11 @@ abstract class ClipBase {
 
 class ClipPlaylist<T extends TrackBase> {
   final T track;
+  final _ctrl = StreamController<ClipBase?>.broadcast();
   num fadeOutTransition = 2;
   Timer? _timer;
+
+  Stream<ClipBase?> get onClipChange => _ctrl.stream;
 
   int _index = 0;
   int get index => _index;
@@ -108,8 +111,9 @@ class ClipPlaylist<T extends TrackBase> {
     _timer?.cancel();
     track.activeClip?.fadeOut(transition: fadeOutTransition);
 
+    _ctrl.sink.add(track._clips[_index]);
     _timer = Timer(Duration(seconds: 1), () {
-      cueClip(index, transition: 0.1);
+      cueClip(_index, transition: 0.1, notifyListeners: false);
     });
   }
 
@@ -127,8 +131,15 @@ class ClipPlaylist<T extends TrackBase> {
     cueClip(null, transition: defaultTransition);
   }
 
-  void cueClip(int? index, {num transition = 1}) async {
+  void cueClip(
+    int? index, {
+    num transition = 1,
+    bool notifyListeners = true,
+  }) async {
     track.cueClip(index, transition: transition);
+    if (notifyListeners) {
+      _ctrl.sink.add(track.activeClip);
+    }
 
     _timer?.cancel();
     if (index != null) {

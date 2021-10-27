@@ -17,6 +17,10 @@ class CustomAmbience extends Ambience {
     weather = FilterableAudioClipTrack(this);
     crowd = FilterableAudioClipTrack(this);
 
+    music.onClipChange.listen((clip) {
+      print('CHANGE: ${clip?.id}');
+    });
+
     httpClient.get(Uri.parse('$server/audio')).then((response) {
       var json = jsonDecode(response.body);
 
