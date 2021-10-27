@@ -69,6 +69,7 @@ abstract class TrackBase<C extends ClipBase> with AmbienceObject {
     for (var c in _clips) {
       c.dispose();
     }
+    _activeClip = null;
     _clips.clear();
   }
 }
@@ -171,13 +172,17 @@ class ClipPlaylist<T extends TrackBase> {
 
   void syncToTracklist(Tracklist tracklist) {
     var t = tracklist.getTrackAtTime();
-    _setTrack(index, secondsIn: t.secondsIn);
+    _setTrack(t.playlistIndex, secondsIn: t.secondsIn);
   }
 
   Future<void> fromTracklist(
-      Tracklist tracklist, String Function(Track track) trackToUrl) async {
+      Tracklist? tracklist, String Function(Track track) trackToUrl) async {
     await track.clear();
-    track.addAll(tracklist.tracks.map(trackToUrl));
-    syncToTracklist(tracklist);
+    if (tracklist == null) {
+      _timer?.cancel();
+    } else {
+      track.addAll(tracklist.tracks.map(trackToUrl));
+      syncToTracklist(tracklist);
+    }
   }
 }
