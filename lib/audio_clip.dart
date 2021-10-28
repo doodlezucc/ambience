@@ -175,7 +175,7 @@ class CrossOriginAudioClip extends ClipBase {
 
   @override
   void dispose() {
-    audio.src = '';
+    audio.removeAttribute('src');
   }
 
   @override
@@ -200,7 +200,7 @@ class CrossOriginAudioClip extends ClipBase {
       } else {
         this.volume = volume.toDouble();
         if (volume == 0) {
-          audio.src = '';
+          audio.removeAttribute('src');
         }
         timer.cancel();
       }
