@@ -255,7 +255,7 @@ class Playlist {
     }
 
     if (progressBar == null) {
-      var lastProgress = 0;
+      var lastProgress = 0.0;
 
       Timer.periodic(Duration(seconds: 2), (t) {
         if (completer.isCompleted) {
@@ -263,6 +263,7 @@ class Playlist {
         } else if (progress != lastProgress) {
           var percentage = (progress * 100).toStringAsFixed(2).padLeft(6);
           print('Downloading... $percentage%');
+          lastProgress = progress;
         }
       });
     }
@@ -360,6 +361,8 @@ class TrackInfo extends Track {
         'error',
         '-i',
         tmp,
+        '-filter:a',
+        'loudnorm=I=-13', // normalize to -13 LUFS
         '-c:a',
         'libmp3lame',
         '-q:a',
