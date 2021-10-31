@@ -83,8 +83,6 @@ class FilterableAudioClip extends NodeClip {
         _init();
       }
       _startCoroutine(secondsIn);
-    } else if (volume == 0) {
-      _stopCoroutine();
     }
   }
 
@@ -104,6 +102,8 @@ class FilterableAudioClip extends NodeClip {
     var fadeIn = _playFirst ? gain1 : gain2;
     var fadeOut = _playFirst ? gain2 : gain1;
 
+    fadeOut.gain!.cancelScheduledValues(track.ambience.ctx.currentTime!);
+    fadeIn.gain!.cancelScheduledValues(track.ambience.ctx.currentTime!);
     fadeOut.gain!.setValueCurveAtTime(
         curveHL, track.ambience.ctx.currentTime!, loopTransition);
     fadeIn.gain!.setValueCurveAtTime(
