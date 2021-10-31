@@ -183,7 +183,7 @@ class Playlist {
       url,
     ]);
 
-    var json = jsonDecode(meta[0]);
+    var json = jsonDecode(meta.join());
 
     List entries = json['entries'];
     var tracks = entries.where((j) => !exclude.contains(j['id'])).map((j) {
@@ -326,7 +326,7 @@ class TrackInfo extends Track {
       url,
     ]);
 
-    var json = jsonDecode(lines[0]);
+    var json = jsonDecode(lines.join());
 
     return TrackInfo(
       json['id'],
