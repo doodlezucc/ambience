@@ -177,10 +177,9 @@ class ClipPlaylist<T extends TrackBase> {
 
   Future<void> fromTracklist(
       Tracklist? tracklist, String Function(Track track) trackToUrl) async {
+    _timer?.cancel();
     await track.clear();
-    if (tracklist == null) {
-      _timer?.cancel();
-    } else {
+    if (tracklist != null) {
       track.addAll(tracklist.tracks.map(trackToUrl));
       syncToTracklist(tracklist);
     }
