@@ -355,14 +355,33 @@ class TrackInfo extends Track {
         onProgress: onProgress,
       );
 
+      var detect = await _collectProcessLines(
+        'ffmpeg',
+        [
+          '-hide_banner',
+          '-i',
+          tmp,
+          '-af',
+          'volumedetect',
+          '-f',
+          'null',
+          Platform.isWindows ? 'NUL' : '/dev/null',
+        ],
+        collectErrors: true,
+      );
+
+      var line = detect.firstWhere((s) => s.contains('max_volume'));
+      var match = RegExp(r'(?<=: )-?\d(\.\d)?').firstMatch(line)![0]!;
+      var vol = -double.parse(match);
+
       await _collectProcessLines('ffmpeg', [
         '-hide_banner',
         '-loglevel',
         'error',
         '-i',
         tmp,
-        '-filter:a',
-        'loudnorm=I=-13', // normalize to -13 LUFS
+        '-af',
+        'volume=${vol}dB', // apply peak normalization
         '-c:a',
         'libmp3lame',
         '-q:a',
@@ -420,22 +439,30 @@ Future<List<String>> _collectProcessLines(
   List<String> arguments, {
   bool debug = false,
   void Function(String s)? onStdOut,
+  bool collectErrors = false,
 }) async {
   var process = await Process.start(exe, arguments);
 
   var lines = <String>[];
 
-  process.stdout.listen((data) {
+  String printLine(List<int> data) {
     var s = utf8.decode(data).trimRight();
     if (onStdOut != null) onStdOut(s);
 
     lines.addAll(s.split('\n'));
-    if (debug) {
-      print(s);
-    }
+    return s;
+  }
+
+  process.stdout.listen((data) {
+    var s = printLine(data);
+    if (debug) print(s);
   });
   process.stderr.listen((data) {
-    stderr.add(data);
+    if (collectErrors) {
+      printLine(data);
+    } else {
+      stderr.add(data);
+    }
   });
 
   var exitCode = await process.exitCode;
