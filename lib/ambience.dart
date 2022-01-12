@@ -63,8 +63,10 @@ abstract class TrackBase<C extends ClipBase> with AmbienceObject {
   }
 
   Future<void> clear({num fadeOut = 1}) async {
-    activeClip?.fadeOut(transition: fadeOut);
-    await Future.delayed(Duration(milliseconds: (1000 * fadeOut).toInt()));
+    if (activeClip != null) {
+      activeClip!.fadeOut(transition: fadeOut);
+      await Future.delayed(Duration(milliseconds: (1000 * fadeOut).toInt()));
+    }
 
     for (var c in _clips) {
       c.dispose();
