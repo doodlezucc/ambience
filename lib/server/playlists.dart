@@ -336,7 +336,7 @@ class TrackInfo extends Track {
     if (loaded != null) return loaded;
 
     String title = json['title'];
-    String uploader = json['uploader'] ?? json['artist'];
+    String uploader = json['artist'] ?? json['channel'];
     int duration = (json['duration'] as num).toInt();
 
     return TrackInfo(id, title, uploader, duration);
@@ -448,7 +448,7 @@ Future<List<String>> _collectYTDLLines(
   void Function(double progress)? onProgress,
 }) async {
   var lines = await _collectProcessLines(
-    'youtube-dl',
+    'yt-dlp',
     arguments,
     debug: debug,
     onStdOut: (s) {
