@@ -214,6 +214,7 @@ class Playlist {
     var queue = tracks.map((e) => _trackToTask(e, directory)).toList();
 
     ProgressBar? progressBar;
+    var isDownloadingNewTracks = false;
 
     if (stdout.hasTerminal) {
       var token = ProgressBar.formatterBarToken;
@@ -241,13 +242,17 @@ class Playlist {
         if (count == tracks.length) {
           completer.complete();
         }
-      }, () {
+      }, (mustDownload) {
+        if (mustDownload) {
+          isDownloadingNewTracks = true;
+        }
+
         progress =
             queue.fold<double>(0, (v, e) => v + e.progress) / queue.length;
 
         if (onProgress != null) onProgress(progress);
 
-        if (progressBar != null) {
+        if (progressBar != null && isDownloadingNewTracks) {
           progressBar.value = (progress * 10000).floor();
           progressBar.render();
         }
@@ -268,14 +273,17 @@ class Playlist {
       });
     }
 
-    return completer.future;
+    await completer.future;
+    if (isDownloadingNewTracks && progressBar != null) {
+      stdout.write('\n');
+    }
   }
 
   void _downloadThread(
     Directory dir,
     List<DownloadTask> queue,
     void Function(bool downloaded) onSuccess,
-    void Function() onProgress,
+    void Function(bool mustDownload) onProgress,
   ) {
     for (var task in queue) {
       if (!task.isDownloading) {
@@ -303,11 +311,12 @@ class DownloadTask {
 
   DownloadTask(this.track, this.file);
 
-  Future<DownloadResult> download(void Function() onProgressUpdate) async {
+  Future<DownloadResult> download(
+      void Function(bool mustDownload) onProgressUpdate) async {
     isDownloading = true;
-    var result = await track.download(file, onProgress: (p) {
+    var result = await track.download(file, onProgress: (p, mustDownload) {
       progress = p;
-      onProgressUpdate();
+      onProgressUpdate(mustDownload);
     });
     if (result == DownloadResult.failed) isDownloading = false;
     return result;
@@ -340,10 +349,10 @@ class TrackInfo extends Track {
     File file, {
     String format = '140/bestaudio',
     bool redownload = false,
-    void Function(double progress)? onProgress,
+    void Function(double progress, bool mustDownload)? onProgress,
   }) async {
     if (!redownload && await file.exists()) {
-      if (onProgress != null) onProgress(1);
+      if (onProgress != null) onProgress(1, false);
       return DownloadResult.skipped;
     }
 
@@ -352,7 +361,9 @@ class TrackInfo extends Track {
     try {
       await _collectYTDLLines(
         ['-f', format, '-o', tmp, '--', id],
-        onProgress: onProgress,
+        onProgress: onProgress == null
+            ? null
+            : (progress) => onProgress(progress, true),
       );
 
       var detect = await _collectProcessLines(
