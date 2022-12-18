@@ -1,11 +1,10 @@
 name: ambience
 description: An interface for directing ambient sounds and music.
-version: 1.0.0
+version: 1.0.1
 # homepage: https://www.example.com
 
 environment:
-  sdk: '>=2.14.3 <3.0.0'
-
+  sdk: ">=2.14.3 <3.0.0"
 
 dependencies:
   args: ^2.0.0
