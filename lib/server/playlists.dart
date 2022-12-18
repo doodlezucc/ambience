@@ -75,26 +75,22 @@ class PlaylistCollection {
     }
 
     var json = jsonDecode(await file.readAsString());
+    final Map playlists = json['playlists'];
 
-    for (var pl in json['playlists']) {
-      String? id;
-      Iterable<String>? exclude;
+    for (var pl in playlists.entries) {
+      String id = pl.key;
 
-      if (pl is String) {
-        id = pl;
-      } else {
-        id = pl['id'];
-        exclude = List.from(pl['exclude']);
-      }
+      Map commands = pl.value;
+      final include = List<String>.from(commands['include'] ?? const []);
+      final exclude = List<String>.from(commands['exclude'] ?? const []);
 
-      if (id != null) {
-        await addPlaylist(
-          id,
-          download: false,
-          exclude: exclude,
-          update: update,
-        );
-      }
+      await addPlaylist(
+        id,
+        download: false,
+        include: include,
+        exclude: exclude,
+        update: update,
+      );
     }
   }
 
@@ -111,6 +107,7 @@ class PlaylistCollection {
     String url, {
     bool download = true,
     bool update = false,
+    Iterable<String>? include,
     Iterable<String>? exclude,
   }) async {
     Playlist? pl = getPlaylist(url);
@@ -120,12 +117,26 @@ class PlaylistCollection {
       pl = null;
     }
 
+    final reuse = allTracks.toList();
+    final additionalInfos = <TrackInfo>[];
+    if (include != null && include.isNotEmpty) {
+      for (var id in include) {
+        additionalInfos.add(await TrackInfo.extractTrackInfo(
+          id,
+          reuse: reuse,
+        ));
+      }
+    }
+
+    reuse.addAll(additionalInfos);
+
     if (pl == null) {
       pl = await Playlist.extract(
         url,
-        reuse: allTracks,
+        reuse: reuse,
         exclude: exclude ?? const [],
       );
+      pl.tracks.addAll(additionalInfos);
       _playlists.add(pl);
       await saveMeta();
     }
@@ -186,19 +197,10 @@ class Playlist {
     var json = jsonDecode(meta.join());
 
     List entries = json['entries'];
-    var tracks = entries.where((j) => !exclude.contains(j['id'])).map((j) {
-      String id = j['id'];
-
-      if (reuse != null && reuse.any((t) => t.id == id)) {
-        return reuse.firstWhere((t) => t.id == id);
-      }
-
-      String title = j['title'];
-      String uploader = j['uploader'];
-      int duration = (j['duration'] as num).toInt();
-
-      return TrackInfo(id, title, uploader, duration);
-    }).toList();
+    var tracks = entries
+        .where((j) => !exclude.contains(j['id']))
+        .map((j) => TrackInfo.fromJson(j, reuse: reuse))
+        .toList();
 
     return Playlist(json['id'], json['title'], tracks);
   }
@@ -327,22 +329,42 @@ class TrackInfo extends Track {
   TrackInfo(String id, String title, String artist, int duration)
       : super(id, title, artist, duration);
 
-  TrackInfo.fromJson(json) : super.fromJson(json);
+  static TrackInfo fromJson(Map json, {Iterable<TrackInfo>? reuse}) {
+    String id = json['id'];
 
-  static Future<TrackInfo> extract(String url) async {
-    var lines = await _collectYTDLLines([
-      '-j',
-      url,
-    ]);
+    final loaded = _getLoadedTrackInfo(id, reuse);
+    if (loaded != null) return loaded;
 
-    var json = jsonDecode(lines.join());
+    String title = json['title'];
+    String uploader = json['uploader'] ?? json['artist'];
+    int duration = (json['duration'] as num).toInt();
 
-    return TrackInfo(
-      json['id'],
-      json['fulltitle'],
-      json['channel'],
-      json['duration'],
-    );
+    return TrackInfo(id, title, uploader, duration);
+  }
+
+  static TrackInfo? _getLoadedTrackInfo(
+    String id,
+    Iterable<TrackInfo>? tracks,
+  ) {
+    if (tracks == null) return null;
+
+    try {
+      return tracks.firstWhere((t) => t.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<TrackInfo> extractTrackInfo(
+    String id, {
+    Iterable<TrackInfo>? reuse,
+  }) async {
+    final loaded = _getLoadedTrackInfo(id, reuse);
+    if (loaded != null) return loaded;
+
+    final meta = await _collectYTDLLines(['-J', id]);
+    final json = jsonDecode(meta.join());
+    return fromJson(json);
   }
 
   Future<DownloadResult> download(

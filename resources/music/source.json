@@ -1,12 +1,13 @@
 {
-  "playlists": [
-    {
-      "id": "PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM",
+  "playlists": {
+    "PLS-VFMeLklgK0rABOkOkFBtR-XvxXxRwM": {
+      "include": [
+        "iGKBw4WbZR8"
+      ],
       "exclude": [
         "_ujlcageCKA",
-        "AIVi63xKIRE",
-        "c5F1zvdqHMI"
+        "AIVi63xKIRE"
       ]
     }
-  ]
+  }
 }
