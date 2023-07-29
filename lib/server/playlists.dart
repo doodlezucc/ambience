@@ -223,9 +223,10 @@ class Playlist {
       progressBar = ProgressBar(
         total: 10000,
         formatter: (current, total, progress, elapsed) {
-          var percentage = (100 * progress).toStringAsFixed(2) + '%';
+          var percentage = (100 * progress).toStringAsFixed(2);
+          var progressString = '$percentage%';
 
-          return '[$token] $percentage';
+          return '[$token] $progressString';
         },
         width: 100,
       );
@@ -378,7 +379,7 @@ class TrackInfo extends Track {
       return DownloadResult.skipped;
     }
 
-    var tmp = file.path + '.tmp';
+    var tmp = '${file.path}.tmp';
 
     try {
       await _collectYTDLLines(
