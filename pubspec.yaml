@@ -1,6 +1,6 @@
 name: ambience
 description: An interface for directing ambient sounds and music.
-version: 1.0.1
+version: 1.0.2
 # homepage: https://www.example.com
 
 environment:
